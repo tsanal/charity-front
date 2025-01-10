@@ -73,8 +73,11 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
       const response = await fetch(`${backendUrl}/person`, {
         method: "POST",
         headers: {
+          Authorization: auth,
+        },
+        headers: {
           "Content-Type": "application/json",
-          Authorization: "Basic " + btoa(`${auth.username}:${auth.password}`),
+          Authorization: auth,
         },
         body: JSON.stringify(contact),
       });

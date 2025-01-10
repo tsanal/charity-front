@@ -7,15 +7,17 @@ import {
 } from "@tanstack/react-table";
 import axios from "axios";
 import CSVImportModal from "./ImportModal";
+import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
+import { useNavigate } from "react-router-dom";
 
 const ContactTable = () => {
+  const auth = useAuthHeader();
+  const navigate = useNavigate();
+
+  if (!auth) {
+    navigate("/");
+  }
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
-  const backendUsername = process.env.REACT_APP_BACKEND_USERNAME;
-  const backendPassword = process.env.REACT_APP_BACKEND_PASSWORD;
-  const auth = {
-    username: backendUsername,
-    password: backendPassword,
-  };
 
   const [data, setData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -37,7 +39,6 @@ const ContactTable = () => {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
       const response = await axios.get(`${backendUrl}/person`, {
@@ -95,7 +96,9 @@ const ContactTable = () => {
     if (window.confirm("Are you sure you want to delete this contact?")) {
       try {
         await axios.delete(`${backendUrl}/person/${id}`, {
-          auth: auth,
+          headers: {
+            Authorization: auth,
+          },
         });
         await fetchData();
       } catch (error) {
@@ -112,10 +115,18 @@ const ContactTable = () => {
         await axios.put(
           `${backendUrl}/person/${currentContact.id}`,
           currentContact,
-          { auth }
+          {
+            headers: {
+              Authorization: auth,
+            },
+          }
         );
       } else {
-        await axios.post(`${backendUrl}/person`, currentContact, { auth });
+        await axios.post(`${backendUrl}/person`, currentContact, {
+          headers: {
+            Authorization: auth,
+          },
+        });
       }
       await fetchData();
       setCurrentContact({
@@ -261,7 +272,7 @@ const ContactTable = () => {
 
   return (
     <div className="px-4 py-8 max-w-9xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-around items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">
           Contact Directory
         </h2>
@@ -482,6 +493,7 @@ const ContactTable = () => {
                     <option value="Participant">Participant</option>
                     <option value="Outreach">Outreach</option>
                     <option value="Volunteer">Volunteer</option>
+                    <option value="Grant">Grant</option>
                   </select>
                 </div>
               </div>
