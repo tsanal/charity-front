@@ -18,6 +18,7 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
     setProcessedRecords(0);
     setTotalRecords(0);
   };
+  console.log("errors", errors);
 
   const mapCSVToContact = (csvRow) => {
     return {
