@@ -17,7 +17,7 @@ const LoginComponent = () => {
     if (auth) {
       navigate("/main");
     }
-  });
+  }, [auth]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
