@@ -8,15 +8,11 @@ import {
 import axios from "axios";
 import CSVImportModal from "./ImportModal";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
-import { useNavigate } from "react-router-dom";
 
 const ContactTable = () => {
   const auth = useAuthHeader();
-  const navigate = useNavigate();
 
-  if (!auth) {
-    navigate("/");
-  }
+  console.log(auth);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   const [data, setData] = useState([]);
@@ -26,44 +22,50 @@ const ContactTable = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentContact, setCurrentContact] = useState({
-    title: "",
+    name: "",
     phone: "",
     email: "",
     street: "",
     city: "",
     state: "",
     zip: "",
-    relationship_type: "",
-    status: "publish",
-    id: null,
+    relationshipType: "",
   });
+  const [editingId, setEditingId] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
-      const response = await axios.get(`${backendUrl}/person`, {
-        params: {
-          page: page,
-          per_page: itemsPerPage,
+      const response = await axios.get(
+        `${backendUrl}/person`,
+        {
+          headers: {
+            Authorization: auth,
+          },
         },
-        auth: auth,
-      });
+        {
+          params: {
+            page: page,
+            limit: itemsPerPage,
+          },
+        }
+      );
 
-      const transformedData = response.data.map((item) => ({
-        title: item.title.rendered,
-        phone: item.phone,
-        email: item.email,
-        street: item.street,
-        city: item.city,
-        state: item.state,
-        zip: item.zip,
-        relationship_type: item.relationship_type,
+      const transformedData = response.data.results.map((item) => ({
+        name: item.name || "",
+        phone: item.phone || "",
+        email: item.email || "",
+        street: item.street || "",
+        city: item.city || "",
+        state: item.state || "",
+        zip: item.zip || "",
+        relationshipType: item.relationshipType || "",
         id: item.id,
       }));
 
       setData(transformedData);
-      // Get total pages from headers - adjust header name based on your API
-      const totalItems = parseInt(response.headers["x-wp-total"] || 0);
+      const totalItems = response.data.totalCount;
       const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
       setTotalPages(calculatedTotalPages);
     } catch (error) {
@@ -79,15 +81,25 @@ const ContactTable = () => {
     const { name, value } = e.target;
     setCurrentContact((prev) => ({
       ...prev,
-      [name]: value,
+      [name]: value || "", // Ensure empty strings instead of null
     }));
   };
 
   const handleEdit = (contact) => {
-    setCurrentContact({
-      ...contact,
-      status: "publish",
-    });
+    // Ensure all fields are strings
+    const editContact = {
+      name: contact.name || "",
+      phone: contact.phone || "",
+      email: contact.email || "",
+      street: contact.street || "",
+      city: contact.city || "",
+      state: contact.state || "",
+      zip: contact.zip || "",
+      relationshipType: contact.relationshipType || "",
+    };
+
+    setCurrentContact(editContact);
+    setEditingId(contact.id);
     setIsEditing(true);
     setIsModalOpen(true);
   };
@@ -110,11 +122,25 @@ const ContactTable = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
+
+    // Prepare the data for submission
+    const submitData = {
+      name: currentContact.name || "",
+      phone: currentContact.phone || "",
+      email: currentContact.email || "",
+      street: currentContact.street || "",
+      city: currentContact.city || "",
+      state: currentContact.state || "",
+      zip: currentContact.zip || "",
+      relationshipType: currentContact.relationshipType || "",
+    };
+
     try {
       if (isEditing) {
-        await axios.put(
-          `${backendUrl}/person/${currentContact.id}`,
-          currentContact,
+        await axios.patch(
+          `${backendUrl}/person/${editingId}`,
+
+          submitData,
           {
             headers: {
               Authorization: auth,
@@ -122,29 +148,17 @@ const ContactTable = () => {
           }
         );
       } else {
-        await axios.post(`${backendUrl}/person`, currentContact, {
+        await axios.post(`${backendUrl}/person`, submitData, {
           headers: {
             Authorization: auth,
           },
         });
       }
       await fetchData();
-      setCurrentContact({
-        title: "",
-        phone: "",
-        email: "",
-        street: "",
-        city: "",
-        state: "",
-        zip: "",
-        relationship_type: "",
-        status: "publish",
-        id: null,
-      });
-      setIsModalOpen(false);
-      setIsEditing(false);
+      resetModal();
     } catch (error) {
       console.error("Error saving contact:", error);
+      alert(error.response?.data?.message || "Error saving contact");
     } finally {
       setIsSubmitting(false);
     }
@@ -153,7 +167,7 @@ const ContactTable = () => {
   const columnHelper = createColumnHelper();
 
   const columns = [
-    columnHelper.accessor("title", {
+    columnHelper.accessor("name", {
       header: "Name",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
@@ -181,7 +195,7 @@ const ContactTable = () => {
       header: "ZIP",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("relationship_type", {
+    columnHelper.accessor("relationshipType", {
       header: "Relationship",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
@@ -214,17 +228,16 @@ const ContactTable = () => {
 
   const resetModal = () => {
     setCurrentContact({
-      title: "",
+      name: "",
       phone: "",
       email: "",
       street: "",
       city: "",
       state: "",
       zip: "",
-      relationship_type: "",
-      status: "publish",
-      id: null,
+      relationshipType: "",
     });
+    setEditingId(null);
     setIsEditing(false);
     setIsModalOpen(false);
   };
@@ -287,16 +300,14 @@ const ContactTable = () => {
             onClick={() => {
               setIsEditing(false);
               setCurrentContact({
-                title: "",
+                name: "",
                 phone: "",
                 email: "",
                 street: "",
                 city: "",
                 state: "",
                 zip: "",
-                relationship_type: "",
-                status: "publish",
-                id: null,
+                relationshipType: "",
               });
               setIsModalOpen(true);
             }}
@@ -367,16 +378,16 @@ const ContactTable = () => {
               <div className="space-y-4">
                 <div>
                   <label
-                    htmlFor="title"
+                    htmlFor="name"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
                     Name
                   </label>
                   <input
-                    id="title"
-                    name="title"
+                    id="name"
+                    name="name"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.title}
+                    value={currentContact.name}
                     onChange={handleInputChange}
                     required
                   />
@@ -396,22 +407,24 @@ const ContactTable = () => {
                     onChange={handleInputChange}
                   />
                 </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
+                {!isEditing && (
+                  <div>
+                    <label
+                      htmlFor="email"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Email
+                    </label>
+                    <input
+                      id="email"
+                      name="email"
+                      type="email"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      value={currentContact.email}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+                )}
                 <div>
                   <label
                     htmlFor="street"
@@ -476,16 +489,16 @@ const ContactTable = () => {
                 </div>
                 <div>
                   <label
-                    htmlFor="relationship_type"
+                    htmlFor="relationshipType"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
                     Relationship Type
                   </label>
                   <select
-                    id="relationship_type"
-                    name="relationship_type"
+                    id="relationshipType"
+                    name="relationshipType"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.relationship_type}
+                    value={currentContact.relationshipType}
                     onChange={handleInputChange}
                   >
                     <option value="">Select a relationship type</option>

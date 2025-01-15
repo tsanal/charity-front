@@ -1,11 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import './App.css';
-import InfoTable from './components/InfoTable';
 import Login from './components/Login';
 import AuthProvider from 'react-auth-kit';
 import createStore from 'react-auth-kit/createStore';
 import Header from './components/Header';
+import Main from './components/Main';
 
 function App() {
   const store = createStore({
@@ -18,11 +18,12 @@ function App() {
     <AuthProvider store={store}>
       <Router>
         <div className="App">
+
           <Header />
 
           <Routes>
             <Route path="/" element={<Login />} />
-            <Route path="/contact" element={<InfoTable />} />
+            <Route path="/main" element={<Main />} />
           </Routes>
         </div>
       </Router>

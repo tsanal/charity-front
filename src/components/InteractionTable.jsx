@@ -6,17 +6,12 @@ import {
   createColumnHelper,
 } from "@tanstack/react-table";
 import axios from "axios";
+import MultiPersonSelect from "./MultiplePersonSelect";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
-import { useNavigate } from "react-router-dom";
 
-const ContactTable = () => {
-  const auth = useAuthHeader();
-  const navigate = useNavigate();
-
-  if (!auth) {
-    navigate("/");
-  }
+const InteractionTable = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
+  const auth = useAuthHeader();
 
   const [data, setData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,47 +19,36 @@ const ContactTable = () => {
   const [perPage, setPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
-  const [currentContact, setCurrentContact] = useState({
-    title: "",
-    phone: "",
-    email: "",
-    street: "",
-    city: "",
-    state: "",
-    zip: "",
-    relationship_type: "",
-    status: "publish",
-    id: null,
+  const [currentInteraction, setCurrentInteraction] = useState({
+    name: "",
+    method: "",
+    date: "",
+    type: "",
+    duration: "",
+    description: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
-      const response = await axios.get(`${backendUrl}/person`, {
-        params: {
-          page: page,
-          per_page: itemsPerPage,
+      const response = await axios.get(
+        `${backendUrl}/interaction`,
+        {
+          headers: {
+            Authorization: auth,
+          },
         },
-        auth: auth,
-      });
+        {
+          params: {
+            page,
+            limit: itemsPerPage,
+          },
+        }
+      );
 
-      const transformedData = response.data.map((item) => ({
-        title: item.title.rendered,
-        phone: item.phone,
-        email: item.email,
-        street: item.street,
-        city: item.city,
-        state: item.state,
-        zip: item.zip,
-        relationship_type: item.relationship_type,
-        id: item.id,
-      }));
-
-      setData(transformedData);
-      // Get total pages from headers - adjust header name based on your API
-      const totalItems = parseInt(response.headers["x-wp-total"] || 0);
-      const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
-      setTotalPages(calculatedTotalPages);
+      setData(response.data.data);
+      const total = response.data.meta.total;
+      setTotalPages(Math.ceil(total / itemsPerPage));
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -76,74 +60,61 @@ const ContactTable = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentContact((prev) => ({
+    setCurrentInteraction((prev) => ({
       ...prev,
       [name]: value,
     }));
   };
 
-  const handleEdit = (contact) => {
-    setCurrentContact({
-      ...contact,
-      status: "publish",
+  const handleEdit = (interaction) => {
+    setCurrentInteraction({
+      ...interaction,
+      date: interaction.date.split("T")[0], // Format date for input field
     });
     setIsEditing(true);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm("Are you sure you want to delete this contact?")) {
+    if (window.confirm("Are you sure you want to delete this interaction?")) {
       try {
-        await axios.delete(`${backendUrl}/person/${id}`, {
+        await axios.delete(`${backendUrl}/interaction/${id}`, {
           headers: {
             Authorization: auth,
           },
         });
         await fetchData();
       } catch (error) {
-        console.error("Error deleting contact:", error);
+        console.error("Error deleting interaction:", error);
       }
     }
   };
+  console.log("currentInteraction", currentInteraction);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
     try {
+      // Create a copy of currentInteraction without the id field
+      const { id, ...interactionData } = currentInteraction;
+
       if (isEditing) {
-        await axios.put(
-          `${backendUrl}/person/${currentContact.id}`,
-          currentContact,
-          {
-            headers: {
-              Authorization: auth,
-            },
-          }
-        );
+        await axios.patch(`${backendUrl}/interaction/${id}`, interactionData, {
+          headers: {
+            Authorization: auth,
+          },
+        });
       } else {
-        await axios.post(`${backendUrl}/person`, currentContact, {
+        await axios.post(`${backendUrl}/interaction`, currentInteraction, {
           headers: {
             Authorization: auth,
           },
         });
       }
       await fetchData();
-      setCurrentContact({
-        title: "",
-        phone: "",
-        email: "",
-        street: "",
-        city: "",
-        state: "",
-        zip: "",
-        relationship_type: "",
-        status: "publish",
-        id: null,
-      });
-      setIsModalOpen(false);
-      setIsEditing(false);
+      resetModal();
     } catch (error) {
-      console.error("Error saving contact:", error);
+      console.error("Error saving interaction:", error);
     } finally {
       setIsSubmitting(false);
     }
@@ -152,36 +123,32 @@ const ContactTable = () => {
   const columnHelper = createColumnHelper();
 
   const columns = [
-    columnHelper.accessor("title", {
-      header: "Name",
+    columnHelper.accessor("name", {
+      header: "Person",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("phone", {
-      header: "Phone",
+    columnHelper.accessor("method", {
+      header: "Method",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("email", {
-      header: "Email",
+    columnHelper.accessor("date", {
+      header: "Date",
+      cell: (info) => (
+        <div className="truncate">
+          {new Date(info.getValue()).toLocaleDateString()}
+        </div>
+      ),
+    }),
+    columnHelper.accessor("type", {
+      header: "Type",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("street", {
-      header: "Street",
+    columnHelper.accessor("duration", {
+      header: "Duration",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("city", {
-      header: "City",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
-    }),
-    columnHelper.accessor("state", {
-      header: "State",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
-    }),
-    columnHelper.accessor("zip", {
-      header: "ZIP",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
-    }),
-    columnHelper.accessor("relationship_type", {
-      header: "Relationship",
+    columnHelper.accessor("description", {
+      header: "Description",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
     columnHelper.accessor("actions", {
@@ -205,29 +172,24 @@ const ContactTable = () => {
     }),
   ];
 
-  const table = useReactTable({
-    data,
-    columns,
-    getCoreRowModel: getCoreRowModel(),
-  });
-
   const resetModal = () => {
-    setCurrentContact({
-      title: "",
-      phone: "",
-      email: "",
-      street: "",
-      city: "",
-      state: "",
-      zip: "",
-      relationship_type: "",
-      status: "publish",
-      id: null,
+    setCurrentInteraction({
+      name: "",
+      method: "",
+      date: "",
+      type: "",
+      duration: "",
+      description: "",
     });
     setIsEditing(false);
     setIsModalOpen(false);
   };
 
+  const table = useReactTable({
+    data,
+    columns,
+    getCoreRowModel: getCoreRowModel(),
+  });
   const PaginationControls = () => (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
       <div className="flex items-center">
@@ -235,7 +197,7 @@ const ContactTable = () => {
           value={perPage}
           onChange={(e) => {
             setPerPage(Number(e.target.value));
-            setCurrentPage(1); // Reset to first page when changing items per page
+            setCurrentPage(1);
           }}
           className="mr-4 rounded border-gray-300 text-sm"
         >
@@ -272,36 +234,24 @@ const ContactTable = () => {
   return (
     <div className="px-4 py-8 max-w-9xl mx-auto">
       <div className="flex justify-around items-center mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          Contact Directory
-        </h2>
+        <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
         <div className="flex gap-10">
-          <button
-            onClick={() => setIsImportModalOpen(true)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
-          >
-            Import CSV
-          </button>
           <button
             onClick={() => {
               setIsEditing(false);
-              setCurrentContact({
-                title: "",
-                phone: "",
-                email: "",
-                street: "",
-                city: "",
-                state: "",
-                zip: "",
-                relationship_type: "",
-                status: "publish",
-                id: null,
+              setCurrentInteraction({
+                name: "",
+                method: "",
+                date: "",
+                type: "",
+                duration: "",
+                description: "",
               });
               setIsModalOpen(true);
             }}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            Add Contact
+            Add Interaction
           </button>
         </div>
       </div>
@@ -353,7 +303,7 @@ const ContactTable = () => {
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">
-                {isEditing ? "Edit Contact" : "Add New Contact"}
+                {isEditing ? "Edit Interaction" : "Add New Interaction"}
               </h3>
               <button
                 onClick={resetModal}
@@ -366,134 +316,119 @@ const ContactTable = () => {
               <div className="space-y-4">
                 <div>
                   <label
-                    htmlFor="title"
+                    htmlFor="name"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Name
+                    Person(s)
+                  </label>
+                  <MultiPersonSelect
+                    value={currentInteraction.name}
+                    onChange={(value) =>
+                      handleInputChange({ target: { name: "name", value } })
+                    }
+                  />
+                </div>
+                <div>
+                  <label
+                    htmlFor="method"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Method
+                  </label>
+                  <select
+                    id="method"
+                    name="method"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={currentInteraction.method}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select a method</option>
+                    <option value="Email">Email</option>
+                    <option value="Phone">Phone</option>
+                    <option value="In-Person">In-Person</option>
+                    <option value="Video">Video</option>
+                    <option value="Other">Other</option>
+                  </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="date"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Date
                   </label>
                   <input
-                    id="title"
-                    name="title"
+                    id="date"
+                    name="date"
+                    type="date"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.title}
+                    value={currentInteraction.date}
                     onChange={handleInputChange}
                     required
                   />
                 </div>
                 <div>
                   <label
-                    htmlFor="phone"
+                    htmlFor="type"
                     className="block text-sm font-medium text-gray-700 mb-1"
                   >
-                    Phone
-                  </label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.phone}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Email
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.email}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="street"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Street
-                  </label>
-                  <input
-                    id="street"
-                    name="street"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.street}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="city"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      City
-                    </label>
-                    <input
-                      id="city"
-                      name="city"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={currentContact.city}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                  <div>
-                    <label
-                      htmlFor="state"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      State
-                    </label>
-                    <input
-                      id="state"
-                      name="state"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      value={currentContact.state}
-                      onChange={handleInputChange}
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label
-                    htmlFor="zip"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    ZIP Code
-                  </label>
-                  <input
-                    id="zip"
-                    name="zip"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.zip}
-                    onChange={handleInputChange}
-                  />
-                </div>
-                <div>
-                  <label
-                    htmlFor="relationship_type"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Relationship Type
+                    Type
                   </label>
                   <select
-                    id="relationship_type"
-                    name="relationship_type"
+                    id="type"
+                    name="type"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentContact.relationship_type}
+                    value={currentInteraction.type}
                     onChange={handleInputChange}
+                    required
                   >
-                    <option value="">Select a relationship type</option>
-                    <option value="Donor">Donor</option>
-                    <option value="Participant">Participant</option>
-                    <option value="Outreach">Outreach</option>
-                    <option value="Volunteer">Volunteer</option>
-                    <option value="Grant">Grant</option>
+                    <option value="">Select a type</option>
+                    <option value="Follow-up">Follow-up</option>
+                    <option value="Initial Contact">Initial Contact</option>
+                    <option value="Meeting">Meeting</option>
+                    <option value="Support">Support</option>
+                    <option value="Other">Other</option>
                   </select>
+                </div>
+                <div>
+                  <label
+                    htmlFor="duration"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Duration
+                  </label>
+                  <select
+                    id="duration"
+                    name="duration"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={currentInteraction.duration}
+                    onChange={handleInputChange}
+                    required
+                  >
+                    <option value="">Select duration</option>
+                    <option value="30 Minutes">30 Minutes</option>
+                    <option value="60 Minutes">60 Minutes</option>
+                    <option value="90 Minutes">90 Minutes</option>
+                    <option value="120 Minutes">120 Minutes</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="description"
+                    className="block text-sm font-medium text-gray-700 mb-1"
+                  >
+                    Description
+                  </label>
+                  <textarea
+                    id="description"
+                    name="description"
+                    rows="3"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    value={currentInteraction.description}
+                    onChange={handleInputChange}
+                  />
                 </div>
               </div>
               <div className="flex justify-end mt-6">
@@ -505,25 +440,16 @@ const ContactTable = () => {
                   {isSubmitting
                     ? "Saving..."
                     : isEditing
-                    ? "Update Contact"
-                    : "Save Contact"}
+                    ? "Update Interaction"
+                    : "Save Interaction"}
                 </button>
               </div>
             </form>
           </div>
         </div>
       )}
-      <CSVImportModal
-        isOpen={isImportModalOpen}
-        onClose={() => {
-          setIsImportModalOpen(false);
-          fetchData();
-        }}
-        backendUrl={backendUrl}
-        auth={auth}
-      />
     </div>
   );
 };
 
-export default ContactTable;
+export default InteractionTable;

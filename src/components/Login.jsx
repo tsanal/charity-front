@@ -2,9 +2,11 @@ import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import useSignIn from "react-auth-kit/hooks/useSignIn";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
+import axios from "axios";
+import { AuthError } from "react-auth-kit/errors";
 
 const LoginComponent = () => {
-  const [username, setUsername] = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const navigate = useNavigate();
@@ -13,50 +15,42 @@ const LoginComponent = () => {
 
   useEffect(() => {
     if (auth) {
-      navigate("/contact");
+      navigate("/main");
     }
   });
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError("");
+    const body = {
+      email,
+      password,
+    };
 
     try {
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_DOMAIN}wp-json/jwt-auth/v1/token`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            username,
-            password,
-          }),
-        }
+      const response = await axios.post(
+        `${process.env.REACT_APP_BACKEND_URL}/auth/login`,
+        body
       );
 
-      if (response.ok) {
-        const data = await response.json();
-
+      if (response) {
+        console.log("res", response);
         const isAuthenticated = signIn({
           auth: {
-            token: data.token,
+            token: response.data.tokens.access.token,
             type: "Bearer",
           },
-          userState: data.user_display_name,
+          userState: response.data.user.name,
         });
-
         if (isAuthenticated) {
-          navigate("/contact");
-        } else {
-          setError("Authentication failed. Please try again.");
+          navigate("/main");
         }
       } else {
         setError("Invalid credentials. Please try again.");
       }
     } catch (err) {
       setError("An error occurred. Please try again later.");
+      console.log("err", err);
     }
   };
 
@@ -74,18 +68,18 @@ const LoginComponent = () => {
         <form className="space-y-4" onSubmit={handleLogin}>
           <div>
             <label
-              htmlFor="username"
+              htmlFor="email"
               className="block text-sm font-medium text-gray-700"
             >
-              Username
+              email
             </label>
             <input
-              type="text"
-              id="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+              type="email"
+              id="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="block w-full px-4 py-2 mt-1 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300"
-              placeholder="Enter your username"
+              placeholder="Enter your email or email"
               required
             />
           </div>

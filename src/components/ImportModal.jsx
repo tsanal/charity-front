@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import Papa from "papaparse";
+import axios from "axios";
 
 const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
   const [file, setFile] = useState(null);
@@ -20,18 +21,37 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
 
   const mapCSVToContact = (csvRow) => {
     return {
-      title: csvRow["Name"] || "",
+      name: csvRow["Name"] || "",
+      phone: "",
       email: csvRow["Primary Email Address"] || "",
       street: csvRow["Primary Street"] || "",
       city: csvRow["Primary City"] || "",
       state: csvRow["Primary State"] || "",
       zip: csvRow["Primary ZIP Code"] || "",
-      relationship_type: csvRow["Relationship Type"] || "",
-      status: "publish",
+      relationshipType: csvRow["Relationship Type"] || "",
+      account: csvRow["Account Number"] || "",
     };
   };
 
-  const importCSV = () => {
+  const postContact = async (contact) => {
+    try {
+      const response = await axios.post(`${backendUrl}/person`, contact, {
+        headers: {
+          Authorization: auth,
+          "Content-Type": "application/json",
+        },
+      });
+
+      if (response.status !== 200 && response.status !== 201) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to post contact: ${error.message}`);
+    }
+  };
+
+  const importCSV = async () => {
     if (!file) return;
 
     setImporting(true);
@@ -43,51 +63,36 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
       header: true,
       skipEmptyLines: true,
       complete: async (results) => {
-        const validData = results.data.filter((row) => row["Name"]); // Filter rows without names
-        setTotalRecords(validData.length);
+        try {
+          const validData = results.data.filter((row) => row["Name"]);
+          setTotalRecords(validData.length);
 
-        for (let i = 0; i < validData.length; i++) {
-          try {
-            const contact = mapCSVToContact(validData[i]);
-            await postContact(contact);
-            setProcessedRecords((prev) => prev + 1);
-            setProgress(((i + 1) / validData.length) * 100);
-          } catch (error) {
-            setErrors((prev) => [
-              ...prev,
-              `Error importing ${validData[i]["Name"]}: ${error.message}`,
-            ]);
+          let processed = 0;
+          for (const row of validData) {
+            try {
+              const contact = mapCSVToContact(row);
+              await postContact(contact);
+              processed++;
+              setProcessedRecords(processed);
+              setProgress((processed / validData.length) * 100);
+            } catch (error) {
+              setErrors((prev) => [
+                ...prev,
+                `Error importing ${row["Name"]}: ${error.message}`,
+              ]);
+            }
           }
+        } catch (error) {
+          setErrors((prev) => [...prev, `Import error: ${error.message}`]);
+        } finally {
+          setImporting(false);
         }
-        setImporting(false);
       },
       error: (error) => {
         setErrors((prev) => [...prev, `CSV parsing error: ${error.message}`]);
         setImporting(false);
       },
     });
-  };
-
-  const postContact = async (contact) => {
-    try {
-      const response = await fetch(`${backendUrl}/person`, {
-        method: "POST",
-        headers: {
-          Authorization: auth,
-        },
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: auth,
-        },
-        body: JSON.stringify(contact),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-    } catch (error) {
-      throw new Error(`Failed to post contact: ${error.message}`);
-    }
   };
 
   if (!isOpen) return null;
@@ -137,20 +142,9 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
               <div className="w-full bg-gray-200 rounded-full h-2.5">
                 <div
                   className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${progress}%` }}
+                  style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
                 ></div>
               </div>
-            </div>
-          )}
-
-          {errors.length > 0 && (
-            <div className="mt-4 p-4 bg-red-50 rounded-lg">
-              <h4 className="text-red-800 font-medium mb-2">Errors:</h4>
-              <ul className="list-disc list-inside text-sm text-red-700">
-                {errors.map((error, index) => (
-                  <li key={index}>{error}</li>
-                ))}
-              </ul>
             </div>
           )}
 
