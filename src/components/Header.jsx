@@ -41,7 +41,7 @@ const Header = () => {
             <div>
               <div>
                 {" "}
-                <p>Logged in as:{userName}</p>{" "}
+                <p>Logged in as : {userName}</p>{" "}
                 <button className="hover:text-red-500" onClick={logOut}>
                   Log out
                 </button>{" "}
