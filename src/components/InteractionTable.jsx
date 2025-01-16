@@ -56,7 +56,7 @@ const InteractionTable = () => {
 
   useEffect(() => {
     fetchData();
-  }, [fetchData, currentPage, perPage]);
+  }, [currentPage, perPage]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
