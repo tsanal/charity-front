@@ -35,7 +35,10 @@ const Header = () => {
           </a>
         </div> */}
         <div className="flex flex-col items-center">
-          <Icon icon="iconamoon:profile-fill" className="text-5xl" />
+          <Icon
+            icon="iconamoon:profile-fill"
+            className={`${location.pathname !== "/" ? "text-4xl" : "text-5xl"}`}
+          />
 
           {location.pathname !== "/" && (
             <div>

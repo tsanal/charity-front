@@ -77,7 +77,7 @@ const ContactTable = () => {
       setCurrentPage(1);
     }
     fetchData();
-  }, [searchQuery, perPage, searchQuery]);
+  }, [searchQuery, perPage, currentPage]);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentContact((prev) => ({
@@ -397,7 +397,7 @@ const ContactTable = () => {
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Name
                   </label>
@@ -413,7 +413,7 @@ const ContactTable = () => {
                 <div>
                   <label
                     htmlFor="phone"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Phone
                   </label>
@@ -429,7 +429,7 @@ const ContactTable = () => {
                   <div>
                     <label
                       htmlFor="email"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="flex text-sm font-medium text-gray-700 mb-1"
                     >
                       Email
                     </label>
@@ -446,7 +446,7 @@ const ContactTable = () => {
                 <div>
                   <label
                     htmlFor="street"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Street
                   </label>
@@ -462,7 +462,7 @@ const ContactTable = () => {
                   <div>
                     <label
                       htmlFor="city"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="flex text-sm font-medium text-gray-700 mb-1"
                     >
                       City
                     </label>
@@ -477,7 +477,7 @@ const ContactTable = () => {
                   <div>
                     <label
                       htmlFor="state"
-                      className="block text-sm font-medium text-gray-700 mb-1"
+                      className="flex text-sm font-medium text-gray-700 mb-1"
                     >
                       State
                     </label>
@@ -493,7 +493,7 @@ const ContactTable = () => {
                 <div>
                   <label
                     htmlFor="zip"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     ZIP Code
                   </label>
@@ -508,7 +508,7 @@ const ContactTable = () => {
                 <div>
                   <label
                     htmlFor="relationshipType"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Relationship Type
                   </label>

@@ -69,9 +69,9 @@ const LoginComponent = () => {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700"
+              className="flex text-sm font-medium text-gray-700"
             >
-              email
+              Email
             </label>
             <input
               type="email"
@@ -79,7 +79,7 @@ const LoginComponent = () => {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="block w-full px-4 py-2 mt-1 border rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 border-gray-300"
-              placeholder="Enter your email or email"
+              placeholder="Enter your email"
               required
             />
           </div>
@@ -87,7 +87,7 @@ const LoginComponent = () => {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700"
+              className="flex text-sm font-medium text-gray-700"
             >
               Password
             </label>

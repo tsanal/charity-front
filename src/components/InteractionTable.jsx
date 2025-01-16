@@ -42,7 +42,7 @@ const InteractionTable = () => {
 
       setData(response.data.data);
       const total = response.data.meta.total;
-      setTotalPages(Math.ceil(total / itemsPerPage) + 1);
+      setTotalPages(Math.ceil(total / itemsPerPage));
     } catch (error) {
       console.error("Error fetching data:", error);
     }
@@ -227,7 +227,7 @@ const InteractionTable = () => {
 
   return (
     <div className="px-4 py-8 max-w-9xl mx-auto">
-      <div className="flex justify-around items-center mb-6">
+      <div className="flex justify-between items-center mb-6 pr-10">
         <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
         <div className="flex gap-10">
           <button
@@ -311,7 +311,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="name"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Person(s)
                   </label>
@@ -325,7 +325,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="method"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Method
                   </label>
@@ -348,7 +348,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="date"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Date
                   </label>
@@ -365,7 +365,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="type"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Type
                   </label>
@@ -388,7 +388,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="duration"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Duration
                   </label>
@@ -411,7 +411,7 @@ const InteractionTable = () => {
                 <div>
                   <label
                     htmlFor="description"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                    className="flex text-sm font-medium text-gray-700 mb-1"
                   >
                     Description
                   </label>
@@ -422,6 +422,7 @@ const InteractionTable = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={currentInteraction.description}
                     onChange={handleInputChange}
+                    required
                   />
                 </div>
               </div>
