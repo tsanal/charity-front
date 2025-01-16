@@ -16,7 +16,7 @@ const Main = () => {
   }, [auth]);
 
   const [isInteractionOpen, setIsInteractionOpen] = useState(false);
-  const [isContactOpen, setIsContactOpen] = useState(false);
+  const [isContactOpen, setIsContactOpen] = useState(true);
   const openContact = () => {
     setIsInteractionOpen(false);
     setIsContactOpen(true);
@@ -32,7 +32,7 @@ const Main = () => {
           <button
             onClick={openContact}
             className={`flex gap-2 items-center ${
-              isContactOpen ? "bg-gray-300" : "bg-blue-400"
+              isContactOpen ? "bg-gray-600 text-white" : "bg-blue-400"
             } p-2 rounded-lg`}
           >
             <Icon icon="gravity-ui:persons" />
@@ -41,7 +41,7 @@ const Main = () => {
           <button
             onClick={openInteraction}
             className={`flex gap-2 items-center ${
-              isInteractionOpen ? "bg-gray-300" : "bg-blue-400"
+              isInteractionOpen ? "bg-gray-600 text-white" : "bg-blue-400"
             } p-2 rounded-lg`}
           >
             <Icon icon="mingcute:react-fill" /> Interactions

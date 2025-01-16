@@ -8,6 +8,7 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
   const [progress, setProgress] = useState(0);
   const [totalRecords, setTotalRecords] = useState(0);
   const [processedRecords, setProcessedRecords] = useState(0);
+  const [existingRecords, setExistingRecords] = useState(0);
   const [errors, setErrors] = useState([]);
 
   const handleFileChange = (event) => {
@@ -16,9 +17,9 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
     setErrors([]);
     setProgress(0);
     setProcessedRecords(0);
+    setExistingRecords(0);
     setTotalRecords(0);
   };
-  console.log("errors", errors);
 
   const mapCSVToContact = (csvRow) => {
     return {
@@ -48,6 +49,12 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
       }
       return response.data;
     } catch (error) {
+      if (
+        error.response?.data?.code === 400 &&
+        error.response?.data?.message === "Account already exists"
+      ) {
+        setExistingRecords((prev) => prev + 1);
+      }
       throw new Error(`Failed to post contact: ${error.message}`);
     }
   };
@@ -59,6 +66,7 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
     setErrors([]);
     setProgress(0);
     setProcessedRecords(0);
+    setExistingRecords(0);
 
     Papa.parse(file, {
       header: true,
@@ -70,11 +78,11 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
 
           let processed = 0;
           for (const row of validData) {
+            processed++;
+            setProcessedRecords(processed);
             try {
               const contact = mapCSVToContact(row);
               await postContact(contact);
-              processed++;
-              setProcessedRecords(processed);
               setProgress((processed / validData.length) * 100);
             } catch (error) {
               setErrors((prev) => [
@@ -138,6 +146,12 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
                 <span>Processing contacts...</span>
                 <span>
                   {processedRecords} of {totalRecords}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>Already existing accounts:</span>
+                <span className="font-medium text-amber-600">
+                  {existingRecords}
                 </span>
               </div>
               <div className="w-full bg-gray-200 rounded-full h-2.5">

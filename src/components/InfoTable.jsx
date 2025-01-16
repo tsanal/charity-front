@@ -11,8 +11,6 @@ import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 
 const ContactTable = () => {
   const auth = useAuthHeader();
-
-  console.log(auth);
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
 
   const [data, setData] = useState([]);
@@ -21,6 +19,7 @@ const ContactTable = () => {
   const [perPage, setPerPage] = useState(10);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentContact, setCurrentContact] = useState({
     name: "",
     phone: "",
@@ -37,16 +36,20 @@ const ContactTable = () => {
 
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
-      const response = await axios.get(
-        `${backendUrl}/person?page=${encodeURIComponent(
-          page
-        )}&limit=${encodeURIComponent(itemsPerPage)}`,
-        {
-          headers: {
-            Authorization: auth,
-          },
-        }
-      );
+      let url = `${backendUrl}/person?page=${encodeURIComponent(
+        page
+      )}&limit=${encodeURIComponent(itemsPerPage)}`;
+
+      // Add search parameter if searchQuery exists
+      if (searchQuery.trim()) {
+        url += `&name=${encodeURIComponent(searchQuery.trim())}`;
+      }
+
+      const response = await axios.get(url, {
+        headers: {
+          Authorization: auth,
+        },
+      });
 
       const transformedData = response.data.results.map((item) => ({
         name: item.name || "",
@@ -68,11 +71,13 @@ const ContactTable = () => {
       console.error("Error fetching data:", error);
     }
   };
-
   useEffect(() => {
+    // Reset to first page when search query changes
+    if (searchQuery !== "") {
+      setCurrentPage(1);
+    }
     fetchData();
-  }, [currentPage, perPage]);
-
+  }, [searchQuery, perPage, searchQuery]);
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setCurrentContact((prev) => ({
@@ -281,11 +286,28 @@ const ContactTable = () => {
 
   return (
     <div className="px-4 py-8 max-w-9xl mx-auto">
-      <div className="flex justify-around items-center mb-6">
+      <div className="flex justify-between items-center mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">
           Contact Directory
         </h2>
         <div className="flex gap-10">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search by name..."
+              className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-64"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+              >
+                ×
+              </button>
+            )}
+          </div>
           <button
             onClick={() => setIsImportModalOpen(true)}
             className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
