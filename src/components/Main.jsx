@@ -28,7 +28,7 @@ const Main = () => {
   return (
     <div className="flex">
       <div className="w-[20%]">
-        <div className="flex flex-col gap-4 px-16 pt-44 fixed ">
+        <div className="flex flex-col gap-4 px-16 pt-56 fixed ">
           <button
             onClick={openContact}
             className={`flex gap-2 items-center ${

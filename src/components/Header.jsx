@@ -14,12 +14,11 @@ const Header = () => {
   };
 
   return (
-    <div className="flex justify-between items-center px-8 py-2 fixed top-0 left-0 right-0 bg-white">
+    <div className="flex justify-between items-center px-8 py-4 fixed top-0 left-0 right-0 bg-white">
       <div>
-        <h1 className="text-2xl">LONON</h1>
-        <p className="text-xs">THE LONON FOUNDATION</p>
+        <img src="/logo.png" alt="logo" className="w-48" />
       </div>
-      <h2 className="text-4xl font-bold">Team Portal</h2>
+      <h2 className="text-5xl font-bold">Team Portal</h2>
       <div className="flex items-center gap-10">
         {/* <div className="flex gap-4">
           <a
@@ -36,7 +35,7 @@ const Header = () => {
           </a>
         </div> */}
         <div className="flex flex-col items-center">
-          <Icon icon="iconamoon:profile-fill" className="text-4xl" />
+          <Icon icon="iconamoon:profile-fill" className="text-5xl" />
 
           {location.pathname !== "/" && (
             <div>
