@@ -38,16 +38,12 @@ const ContactTable = () => {
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
       const response = await axios.get(
-        `${backendUrl}/person`,
+        `${backendUrl}/person?page=${encodeURIComponent(
+          page
+        )}&limit=${encodeURIComponent(itemsPerPage)}`,
         {
           headers: {
             Authorization: auth,
-          },
-        },
-        {
-          params: {
-            page: page,
-            limit: itemsPerPage,
           },
         }
       );

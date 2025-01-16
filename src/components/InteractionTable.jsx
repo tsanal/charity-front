@@ -32,23 +32,17 @@ const InteractionTable = () => {
   const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
     try {
       const response = await axios.get(
-        `${backendUrl}/interaction`,
+        `${backendUrl}/interaction?page=${page}&limit=${itemsPerPage}`,
         {
           headers: {
             Authorization: auth,
-          },
-        },
-        {
-          params: {
-            page,
-            limit: itemsPerPage,
           },
         }
       );
 
       setData(response.data.data);
       const total = response.data.meta.total;
-      setTotalPages(Math.ceil(total / itemsPerPage));
+      setTotalPages(Math.ceil(total / itemsPerPage) + 1);
     } catch (error) {
       console.error("Error fetching data:", error);
     }
