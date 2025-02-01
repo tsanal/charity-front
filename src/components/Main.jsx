@@ -27,7 +27,7 @@ const Main = () => {
   };
   return (
     <div className="flex">
-      <div className="w-[20%]">
+      <div className="w-[12%]">
         <div className="flex flex-col gap-4 px-16 pt-56 fixed ">
           <button
             onClick={openContact}
@@ -48,7 +48,7 @@ const Main = () => {
           </button>
         </div>
       </div>
-      <div className="w-[80%] pt-40">
+      <div className="w-[88%] pt-40">
         {isInteractionOpen && <InteractionTable />}
         {isContactOpen && <InfoTable />}
       </div>

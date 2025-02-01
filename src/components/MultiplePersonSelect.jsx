@@ -5,40 +5,49 @@ const MultiPersonSelect = ({ value, onChange }) => {
   const auth = useAuthHeader();
   const [inputValue, setInputValue] = useState("");
   const [suggestions, setSuggestions] = useState([]);
-  const [selectedPersons, setSelectedPersons] = useState(
-    value ? value.split(", ") : []
-  );
+  const [selectedPersons, setSelectedPersons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isFocused, setIsFocused] = useState(false);
 
+  // Parse initial value on mount and when value changes
   useEffect(() => {
     if (value) {
-      setSelectedPersons(value.split(", "));
+      // Handle both string and array inputs for backward compatibility
+      if (typeof value === "string") {
+        const persons = value.split(", ").map((item) => {
+          const [name, id] = item.split("|");
+          return { name, id };
+        });
+        setSelectedPersons(persons);
+      } else if (Array.isArray(value)) {
+        setSelectedPersons(value);
+      }
+    } else {
+      setSelectedPersons([]);
     }
   }, [value]);
 
   const searchPersons = async (searchTerm) => {
-    if (!searchTerm.trim()) {
-      setSuggestions([]);
-      return;
-    }
-
     try {
       setIsLoading(true);
-      const response = await fetch(
-        `${process.env.REACT_APP_BACKEND_URL}/person?name=${encodeURIComponent(
-          searchTerm
-        )}`,
-        {
-          headers: {
-            Authorization: auth,
-          },
-        }
-      );
+      let url = `${process.env.REACT_APP_BACKEND_URL}/person?relationshipType=Participant&upliftStatus=Active&upliftStatus=Prospective&limit=50`;
+
+      // Only add name parameter if searchTerm exists
+      if (searchTerm?.trim()) {
+        url += `&name=${encodeURIComponent(searchTerm)}`;
+      }
+
+      const response = await fetch(url, {
+        headers: {
+          Authorization: auth,
+        },
+      });
 
       const data = await response.json();
       // Filter out already selected persons
       const filteredResults = data.results.filter(
-        (person) => !selectedPersons.includes(person.name)
+        (person) =>
+          !selectedPersons.some((selected) => selected.id === person.id)
       );
       setSuggestions(filteredResults);
     } catch (error) {
@@ -49,44 +58,66 @@ const MultiPersonSelect = ({ value, onChange }) => {
     }
   };
 
-  // Debounce search to avoid too many API calls
   useEffect(() => {
     const timeoutId = setTimeout(() => {
-      searchPersons(inputValue);
+      // Only search if input has value or input is focused
+      if (inputValue || isFocused) {
+        searchPersons(inputValue);
+      } else {
+        setSuggestions([]);
+      }
     }, 300);
 
     return () => clearTimeout(timeoutId);
-  }, [inputValue]);
+  }, [inputValue, isFocused]);
 
   const handleInputChange = (e) => {
     setInputValue(e.target.value);
   };
 
+  const handleInputFocus = () => {
+    setIsFocused(true);
+    // If input is empty, trigger search immediately on focus
+    if (!inputValue) {
+      searchPersons("");
+    }
+  };
+
+  const handleInputBlur = () => {
+    // Add small delay before closing suggestions to allow for click handling
+    setTimeout(() => {
+      setIsFocused(false);
+    }, 200);
+  };
+
   const handleSelectPerson = (person) => {
-    const newSelected = [...selectedPersons, person.name];
+    const newSelected = [
+      ...selectedPersons,
+      { name: person.name, id: person.id },
+    ];
     setSelectedPersons(newSelected);
     setInputValue("");
     setSuggestions([]);
-    onChange(newSelected.join(", "));
+    onChange(newSelected);
   };
 
   const handleRemovePerson = (personToRemove) => {
     const newSelected = selectedPersons.filter(
-      (person) => person !== personToRemove
+      (person) => person.id !== personToRemove.id
     );
     setSelectedPersons(newSelected);
-    onChange(newSelected.join(", "));
+    onChange(newSelected);
   };
 
   return (
     <div className="relative">
       <div className="flex flex-wrap gap-2 mb-2">
-        {selectedPersons.map((person, index) => (
+        {selectedPersons.map((person) => (
           <div
-            key={index}
+            key={person.id}
             className="bg-blue-100 px-2 py-1 rounded-md flex items-center gap-1"
           >
-            <span>{person}</span>
+            <span>{person.name}</span>
             <button
               type="button"
               onClick={() => handleRemovePerson(person)}
@@ -101,6 +132,8 @@ const MultiPersonSelect = ({ value, onChange }) => {
         type="text"
         value={inputValue}
         onChange={handleInputChange}
+        onFocus={handleInputFocus}
+        onBlur={handleInputBlur}
         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         placeholder="Type to search persons..."
       />

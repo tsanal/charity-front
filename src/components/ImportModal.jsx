@@ -1,182 +1,251 @@
 import React, { useState } from "react";
-import Papa from "papaparse";
-import axios from "axios";
 
 const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
-  const [file, setFile] = useState(null);
-  const [importing, setImporting] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [totalRecords, setTotalRecords] = useState(0);
-  const [processedRecords, setProcessedRecords] = useState(0);
-  const [existingRecords, setExistingRecords] = useState(0);
-  const [errors, setErrors] = useState([]);
-
-  const handleFileChange = (event) => {
-    const file = event.target.files[0];
-    setFile(file);
-    setErrors([]);
-    setProgress(0);
-    setProcessedRecords(0);
-    setExistingRecords(0);
-    setTotalRecords(0);
-  };
-
-  const mapCSVToContact = (csvRow) => {
-    return {
-      name: csvRow["Name"] || "",
-      phone: "",
-      email: csvRow["Primary Email Address"] || "",
-      street: csvRow["Primary Street"] || "",
-      city: csvRow["Primary City"] || "",
-      state: csvRow["Primary State"] || "",
-      zip: csvRow["Primary ZIP Code"] || "",
-      relationshipType: csvRow["Relationship Type"] || "",
-      account: csvRow["Account Number"] || "",
-    };
-  };
-
-  const postContact = async (contact) => {
-    try {
-      const response = await axios.post(`${backendUrl}/person`, contact, {
-        headers: {
-          Authorization: auth,
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (response.status !== 200 && response.status !== 201) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      return response.data;
-    } catch (error) {
-      if (
-        error.response?.data?.code === 400 &&
-        error.response?.data?.message === "Account already exists"
-      ) {
-        setExistingRecords((prev) => prev + 1);
-      }
-      throw new Error(`Failed to post contact: ${error.message}`);
-    }
-  };
-
-  const importCSV = async () => {
-    if (!file) return;
-
-    setImporting(true);
-    setErrors([]);
-    setProgress(0);
-    setProcessedRecords(0);
-    setExistingRecords(0);
-
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      complete: async (results) => {
-        try {
-          const validData = results.data.filter((row) => row["Name"]);
-          setTotalRecords(validData.length);
-
-          let processed = 0;
-          for (const row of validData) {
-            processed++;
-            setProcessedRecords(processed);
-            try {
-              const contact = mapCSVToContact(row);
-              await postContact(contact);
-              setProgress((processed / validData.length) * 100);
-            } catch (error) {
-              setErrors((prev) => [
-                ...prev,
-                `Error importing ${row["Name"]}: ${error.message}`,
-              ]);
-            }
-          }
-        } catch (error) {
-          setErrors((prev) => [...prev, `Import error: ${error.message}`]);
-        } finally {
-          setImporting(false);
-        }
-      },
-      error: (error) => {
-        setErrors((prev) => [...prev, `CSV parsing error: ${error.message}`]);
-        setImporting(false);
-      },
-    });
-  };
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState({ type: "", message: "" });
 
   if (!isOpen) return null;
 
+  const validateFile = (file) => {
+    const validTypes = [
+      "application/vnd.ms-excel",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    ];
+
+    if (!validTypes.includes(file.type)) {
+      throw new Error("Please upload a valid Excel file (.xls or .xlsx)");
+    }
+
+    // 10MB file size limit
+    const maxSize = 10 * 1024 * 1024;
+    if (file.size > maxSize) {
+      throw new Error("File size should be less than 10MB");
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    try {
+      validateFile(file);
+      setSelectedFile(file);
+      setStatus({ type: "success", message: "File selected successfully" });
+    } catch (error) {
+      setStatus({ type: "error", message: error.message });
+      setSelectedFile(null);
+      e.target.value = null;
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+
+    try {
+      if (!selectedFile) {
+        throw new Error("Please select an Excel file");
+      }
+
+      const confirmMessage = `Upload Excel file: ${selectedFile.name}?`;
+      const isConfirmed = window.confirm(confirmMessage);
+
+      if (!isConfirmed) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append("excel", selectedFile);
+
+      await fetch(`${backendUrl}/excel/upload`, {
+        method: "POST",
+        body: formData,
+        headers: {
+          Authorization: auth,
+        },
+      });
+
+      setStatus({ type: "success", message: "File uploaded successfully!" });
+      setSelectedFile(null);
+      // Reset form and close modal after successful upload
+      e.target.reset();
+      setTimeout(() => {
+        onClose();
+      }, 1500);
+    } catch (error) {
+      console.error("Error uploading Excel file:", error);
+      setStatus({
+        type: "error",
+        message: error.message || "Error uploading file. Please try again.",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
-      <div className="bg-white rounded-lg p-6 max-w-2xl w-full">
-        <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold">Import Contacts from CSV</h3>
-          <button
-            onClick={onClose}
-            className="text-gray-500 hover:text-gray-700"
-          >
-            ×
-          </button>
-        </div>
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Modal Backdrop */}
+      <div className="fixed inset-0 bg-black bg-opacity-50 transition-opacity"></div>
 
-        <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-4">
-            <input
-              type="file"
-              accept=".csv"
-              onChange={handleFileChange}
-              className="block w-full text-sm text-gray-500
-                file:mr-4 file:py-2 file:px-4
-                file:rounded-lg file:border-0
-                file:text-sm file:font-semibold
-                file:bg-blue-50 file:text-blue-700
-                hover:file:bg-blue-100"
-            />
-          </div>
-
-          {file && (
-            <div className="text-sm text-gray-600">
-              Selected file: {file.name}
-            </div>
-          )}
-
-          {importing && (
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Processing contacts...</span>
-                <span>
-                  {processedRecords} of {totalRecords}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm text-gray-600">
-                <span>Already existing accounts:</span>
-                <span className="font-medium text-amber-600">
-                  {existingRecords}
-                </span>
-              </div>
-              <div className="w-full bg-gray-200 rounded-full h-2.5">
-                <div
-                  className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-                  style={{ width: `${Math.max(0, Math.min(100, progress))}%` }}
-                ></div>
-              </div>
-            </div>
-          )}
-
-          <div className="flex justify-end gap-4">
+      {/* Modal Content */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div className="relative max-w-lg w-full bg-white rounded-lg shadow-xl">
+          {/* Modal Header */}
+          <div className="flex items-center justify-between p-4 border-b">
+            <h2 className="text-xl font-semibold text-gray-800">
+              Import Excel File
+            </h2>
             <button
               onClick={onClose}
-              className="px-4 py-2 text-gray-700 hover:text-gray-900"
+              className="text-gray-400 hover:text-gray-500"
             >
-              Cancel
+              <svg
+                className="h-6 w-6"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
             </button>
-            <button
-              onClick={importCSV}
-              disabled={!file || importing}
-              className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              {importing ? "Importing..." : "Import Contacts"}
-            </button>
+          </div>
+
+          {/* Modal Body */}
+          <div className="p-6">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-6">
+                <input
+                  type="file"
+                  accept=".xls,.xlsx"
+                  onChange={handleFileChange}
+                  className="hidden"
+                  id="file-upload"
+                  disabled={isSubmitting}
+                />
+                <label
+                  htmlFor="file-upload"
+                  className="cursor-pointer block text-center"
+                >
+                  <div className="space-y-2">
+                    {/* Upload Icon */}
+                    <svg
+                      className="mx-auto h-12 w-12 text-gray-400"
+                      fill="none"
+                      stroke="currentColor"
+                      viewBox="0 0 24 24"
+                    >
+                      <path
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        strokeWidth={2}
+                        d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"
+                      />
+                    </svg>
+
+                    <div className="text-sm text-gray-600">
+                      {selectedFile ? (
+                        <span className="text-blue-600">
+                          {selectedFile.name}
+                        </span>
+                      ) : (
+                        <>
+                          <span className="text-blue-600 hover:underline">
+                            Choose a file
+                          </span>{" "}
+                          or drag and drop
+                        </>
+                      )}
+                    </div>
+                    <div className="text-xs text-gray-500">
+                      Excel files only (MAX. 10MB)
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Status Message */}
+              {status.message && (
+                <div
+                  className={`p-4 rounded-lg ${
+                    status.type === "error"
+                      ? "bg-red-50 text-red-700 border border-red-200"
+                      : "bg-green-50 text-green-700 border border-green-200"
+                  }`}
+                >
+                  {status.message}
+                </div>
+              )}
+
+              {/* Modal Footer */}
+              <div className="flex gap-4 justify-end mt-6">
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                  disabled={isSubmitting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={!selectedFile || isSubmitting}
+                  className={`px-4 py-2 text-sm font-medium text-white rounded-lg
+                    flex items-center space-x-2
+                    ${
+                      !selectedFile || isSubmitting
+                        ? "bg-gray-400 cursor-not-allowed"
+                        : "bg-blue-600 hover:bg-blue-700"
+                    }`}
+                >
+                  {isSubmitting ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                          fill="none"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      <span>Uploading...</span>
+                    </>
+                  ) : (
+                    <>
+                      <svg
+                        className="h-5 w-5"
+                        fill="none"
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"
+                        />
+                      </svg>
+                      <span>Upload</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       </div>

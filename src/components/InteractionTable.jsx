@@ -8,6 +8,7 @@ import {
 import axios from "axios";
 import MultiPersonSelect from "./MultiplePersonSelect";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
+import { Calendar } from "lucide-react";
 
 const InteractionTable = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -20,19 +21,73 @@ const InteractionTable = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [currentInteraction, setCurrentInteraction] = useState({
-    name: "",
     method: "",
     date: "",
     type: "",
     duration: "",
-    description: "",
+    notes: "",
+    person: [],
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [filters, setFilters] = useState({
+    id: "",
+    name: "",
+    type: "",
+    method: "",
+    notes: "",
+    duration: "",
+    date: "",
+  });
 
-  const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
+  const [isTypeOpen, setIsTypeOpen] = useState(false);
+  const [isMethodOpen, setIsMethodOpen] = useState(false);
+  const [isDurationOpen, setIsDurationOpen] = useState(false);
+
+  const types = [
+    "Any",
+    "Follow-up",
+    "Initial Contact",
+    "Meeting",
+    "Support",
+    "Other",
+  ];
+  const methods = ["Any", "Email", "Phone", "In-person", "Video", "Other"];
+  const durations = [
+    "Any",
+    "30 Minutes",
+    "60 Minutes",
+    "90 Minutes",
+    "120 Minutes",
+  ];
+
+  const handleFilterChange = (key, value) => {
+    const newFilters = { ...filters, [key]: value };
+    setFilters(newFilters);
+    setCurrentPage(1); // Reset to first page when filters change
+    fetchData(1, perPage, newFilters); // Immediately fetch with new filters
+  };
+
+  const fetchData = async (
+    page = currentPage,
+    itemsPerPage = perPage,
+    filterParams = filters
+  ) => {
     try {
+      // Convert filters to query parameters
+      const queryParams = new URLSearchParams({
+        page: page,
+        limit: itemsPerPage,
+        ...(filterParams.id && { id: filterParams.id }),
+        ...(filterParams.name && { name: filterParams.name }),
+        ...(filterParams.type && { type: filterParams.type }),
+        ...(filterParams.method && { method: filterParams.method }),
+        ...(filterParams.notes && { notes: filterParams.notes }),
+        ...(filterParams.duration && { duration: filterParams.duration }),
+        ...(filterParams.date && { date: filterParams.date }),
+      });
+
       const response = await axios.get(
-        `${backendUrl}/interaction?page=${page}&limit=${itemsPerPage}`,
+        `${backendUrl}/interaction?${queryParams.toString()}`,
         {
           headers: {
             Authorization: auth,
@@ -49,8 +104,8 @@ const InteractionTable = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [currentPage, perPage]);
+    fetchData(currentPage, perPage, filters);
+  }, [currentPage, perPage, filters]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -88,37 +143,84 @@ const InteractionTable = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    try {
-      // Create a copy of currentInteraction without the id field
-      const { id, ...interactionData } = currentInteraction;
 
-      if (isEditing) {
-        await axios.patch(`${backendUrl}/interaction/${id}`, interactionData, {
-          headers: {
-            Authorization: auth,
-          },
-        });
-      } else {
-        await axios.post(`${backendUrl}/interaction`, currentInteraction, {
-          headers: {
-            Authorization: auth,
-          },
-        });
+    try {
+      const { id, persons, ...baseInteractionData } = currentInteraction;
+
+      if (!persons || persons.length === 0) {
+        throw new Error("At least one person must be selected");
       }
+
+      // Create confirmation message
+      const personNames = persons.map((person) => person.name).join(", ");
+      const confirmMessage = isEditing
+        ? `Update interaction for ${
+            persons[0].name
+          } and create new interactions for ${personNames.substring(
+            persons[0].name.length + 2
+          )}?`
+        : `Create interactions for the following contacts: ${personNames}?`;
+
+      // Ask for confirmation
+      const isConfirmed = window.confirm(confirmMessage);
+
+      if (!isConfirmed) {
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Create an array of promises for each person's interaction
+      const interactionPromises = persons.map((person, index) => {
+        const interactionData = {
+          ...baseInteractionData,
+          name: person.name,
+          personId: person.id,
+        };
+
+        if (isEditing && id && index === 0) {
+          // Update the first interaction if editing
+          return axios.patch(
+            `${backendUrl}/interaction/${id}`,
+            interactionData,
+            {
+              headers: {
+                Authorization: auth,
+              },
+            }
+          );
+        } else {
+          // Create new interactions for additional persons
+          return axios.post(`${backendUrl}/interaction`, interactionData, {
+            headers: {
+              Authorization: auth,
+            },
+          });
+        }
+      });
+
+      await Promise.all(interactionPromises);
       await fetchData();
       resetModal();
     } catch (error) {
-      console.error("Error saving interaction:", error);
+      console.error("Error saving interactions:", error);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   const columnHelper = createColumnHelper();
+  console.log("data", data);
 
   const columns = [
+    columnHelper.accessor("id", {
+      header: "ID",
+      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+    }),
     columnHelper.accessor("name", {
-      header: "Person",
+      header: "Name",
+      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+    }),
+    columnHelper.accessor("type", {
+      header: "Type",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
     columnHelper.accessor("method", {
@@ -133,17 +235,20 @@ const InteractionTable = () => {
         </div>
       ),
     }),
-    columnHelper.accessor("type", {
-      header: "Type",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
-    }),
+
     columnHelper.accessor("duration", {
       header: "Duration",
       cell: (info) => <div className="truncate">{info.getValue()}</div>,
     }),
-    columnHelper.accessor("description", {
-      header: "Description",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+    columnHelper.accessor("notes", {
+      header: "Notes",
+      cell: (info) => (
+        <div className="max-w-[200px] truncate" title={info.getValue()}>
+          {info.getValue()?.length > 20
+            ? `${info.getValue().substring(0, 20)}…`
+            : info.getValue()}
+        </div>
+      ),
     }),
     columnHelper.accessor("actions", {
       header: "Actions",
@@ -173,7 +278,8 @@ const InteractionTable = () => {
       date: "",
       type: "",
       duration: "",
-      description: "",
+      notes: "",
+      personId: "",
     });
     setIsEditing(false);
     setIsModalOpen(false);
@@ -239,15 +345,162 @@ const InteractionTable = () => {
                 date: "",
                 type: "",
                 duration: "",
-                description: "",
+                notes: "",
               });
               setIsModalOpen(true);
             }}
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
           >
-            Add Interaction
+            Add Participants Interaction
           </button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-7 gap-4 mb-4">
+        <input
+          type="number"
+          placeholder="ID"
+          value={filters.id}
+          onChange={(e) => handleFilterChange("id", e.target.value)}
+          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <input
+          type="text"
+          placeholder="Name"
+          value={filters.name}
+          onChange={(e) => handleFilterChange("name", e.target.value)}
+          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+
+        <div className="relative">
+          <div
+            onClick={() => setIsTypeOpen(!isTypeOpen)}
+            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
+              isTypeOpen ? "bg-gray-50" : ""
+            }`}
+          >
+            {filters.type || "Select Type"}
+            <span className="ml-2">▼</span>
+          </div>
+          {isTypeOpen && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+              {types.map((type) => (
+                <div
+                  key={type}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    handleFilterChange("type", type === "Any" ? "" : type);
+                    setIsTypeOpen(false);
+                  }}
+                >
+                  {type}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <div
+            onClick={() => setIsMethodOpen(!isMethodOpen)}
+            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
+              isMethodOpen ? "bg-gray-50" : ""
+            }`}
+          >
+            {filters.method || "Select Method"}
+            <span className="ml-2">▼</span>
+          </div>
+          {isMethodOpen && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+              {methods.map((method) => (
+                <div
+                  key={method}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    handleFilterChange(
+                      "method",
+                      method === "Any" ? "" : method
+                    );
+                    setIsMethodOpen(false);
+                  }}
+                >
+                  {method}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="relative">
+          <div className="flex items-center">
+            <input
+              type="date"
+              value={filters.date}
+              onChange={(e) => {
+                const date = e.target.value ? new Date(e.target.value) : "";
+                const formattedDate = date
+                  ? date.toISOString().split("T")[0]
+                  : "";
+                handleFilterChange("date", formattedDate);
+              }}
+              className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
+            />
+            {filters.date && (
+              <button
+                onClick={() => handleFilterChange("date", "")}
+                className="absolute right-10 text-3xl hover:text-gray-700 text-gray-400"
+                type="button"
+                aria-label="Clear date"
+              >
+                ×
+              </button>
+            )}
+            <Calendar
+              className="absolute right-3 pointer-events-none text-gray-400"
+              size={20}
+            />
+          </div>
+        </div>
+
+        <div className="relative">
+          <div
+            onClick={() => setIsDurationOpen(!isDurationOpen)}
+            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
+              isDurationOpen ? "bg-gray-50" : ""
+            }`}
+          >
+            {filters.duration || "Select Duration"}
+            <span className="ml-2">▼</span>
+          </div>
+          {isDurationOpen && (
+            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+              {durations.map((duration) => (
+                <div
+                  key={duration}
+                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
+                  onClick={() => {
+                    handleFilterChange(
+                      "duration",
+                      duration === "Any" ? "" : duration
+                    );
+                    setIsDurationOpen(false);
+                  }}
+                >
+                  {duration}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <input
+          type="text"
+          placeholder="Notes"
+          value={filters.notes}
+          onChange={(e) => handleFilterChange("notes", e.target.value)}
+          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
 
       <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
@@ -281,7 +534,7 @@ const InteractionTable = () => {
                 } hover:bg-gray-100`}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 py-3 text-sm text-gray-600">
+                  <td key={cell.id} className="px-4 text-sm text-gray-600">
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
@@ -316,10 +569,13 @@ const InteractionTable = () => {
                     Person(s)
                   </label>
                   <MultiPersonSelect
-                    value={currentInteraction.name}
-                    onChange={(value) =>
-                      handleInputChange({ target: { name: "name", value } })
-                    }
+                    value={currentInteraction.persons}
+                    onChange={(selectedPersons) => {
+                      setCurrentInteraction((prev) => ({
+                        ...prev,
+                        persons: selectedPersons,
+                      }));
+                    }}
                   />
                 </div>
                 <div>
@@ -410,17 +666,17 @@ const InteractionTable = () => {
 
                 <div>
                   <label
-                    htmlFor="description"
+                    htmlFor="notes"
                     className="flex text-sm font-medium text-gray-700 mb-1"
                   >
-                    Description
+                    Note
                   </label>
                   <textarea
-                    id="description"
-                    name="description"
+                    id="notes"
+                    name="notes"
                     rows="3"
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                    value={currentInteraction.description}
+                    value={currentInteraction.notes}
                     onChange={handleInputChange}
                     required
                   />
