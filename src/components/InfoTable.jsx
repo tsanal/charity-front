@@ -380,8 +380,8 @@ const ContactTable = () => {
       </div>
       {/* Inner container with minimum width */}
       <div className="min-w-[1400px]">
-        <div className="flex mb-4 align-center min-w-full">
-          <div className="w-32">
+        <div className="flex gap-2 mb-4 align-center min-w-full">
+          <div className="w-28">
             <input
               type="text"
               placeholder="Account"
@@ -437,7 +437,7 @@ const ContactTable = () => {
             )}
           </div>
 
-          <div className="w-24">
+          <div className="w-36">
             <input
               type="text"
               placeholder="Name"
@@ -452,7 +452,7 @@ const ContactTable = () => {
             />
           </div>
 
-          <div className="w-36 relative" ref={upliftStatusRef}>
+          <div className="w-28 relative" ref={upliftStatusRef}>
             <div
               onClick={() => setIsUpliftStatusOpen(!isUpliftStatusOpen)}
               className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
@@ -493,7 +493,7 @@ const ContactTable = () => {
             )}
           </div>
 
-          <div className="w-24 relative" ref={genderRef}>
+          <div className="w-28 relative" ref={genderRef}>
             <div
               onClick={() => setIsGenderOpen(!isGenderOpen)}
               className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
@@ -533,7 +533,7 @@ const ContactTable = () => {
               </div>
             )}
           </div>
-          <div className="w-24">
+          <div className="w-28">
             <input
               type="text"
               placeholder="Race"
@@ -544,10 +544,10 @@ const ContactTable = () => {
                   race: e.target.value,
                 }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 py-1 border w-full rounded"
             />
           </div>
-          <div className="w-24">
+          <div className="w-36">
             <input
               type="text"
               placeholder="Street"
@@ -558,10 +558,10 @@ const ContactTable = () => {
                   street: e.target.value,
                 }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 py-1 w-full border rounded"
             />
           </div>
-          <div className="w-32">
+          <div className="w-36">
             <input
               type="text"
               placeholder="City"
@@ -572,7 +572,7 @@ const ContactTable = () => {
                   city: e.target.value,
                 }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 py-1 w-full border rounded"
             />
           </div>
           <div className="w-24">
@@ -586,7 +586,7 @@ const ContactTable = () => {
                   state: e.target.value,
                 }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 py-1 w-full border rounded"
             />
           </div>
           <div className="w-24">
@@ -597,10 +597,10 @@ const ContactTable = () => {
               onChange={(e) =>
                 setSearchFilters((prev) => ({ ...prev, zip: e.target.value }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 w-full py-1 border rounded"
             />
           </div>
-          <div className="w-24">
+          <div className="w-28">
             <input
               type="text"
               placeholder="County"
@@ -611,12 +611,12 @@ const ContactTable = () => {
                   county: e.target.value,
                 }))
               }
-              className="px-2 py-1 border rounded"
+              className="px-2 w-full py-1 border rounded"
             />
           </div>
-          <div className="relative w-30" ref={deletedRef}>
+          <div className="relative w-32" ref={deletedRef}>
             <label
-              className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
+              className={`px-2 py-1  w-full border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
                 isDeletedOpen ? "bg-gray-200" : ""
               }`}
             >
