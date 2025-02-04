@@ -669,7 +669,10 @@ const ContactTable = () => {
                 } hover:bg-gray-100`}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="text-sm text-gray-600 border">
+                  <td
+                    key={cell.id}
+                    className="text-sm text-gray-600 border text-start"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}

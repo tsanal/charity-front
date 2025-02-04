@@ -536,7 +536,7 @@ const InteractionTable = () => {
                 {row.getVisibleCells().map((cell) => (
                   <td
                     key={cell.id}
-                    className="px-4 text-sm text-gray-600 border"
+                    className="px-4 text-sm text-gray-600 border text-start"
                   >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
