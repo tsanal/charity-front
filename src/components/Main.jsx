@@ -17,18 +17,22 @@ const Main = () => {
 
   const [isInteractionOpen, setIsInteractionOpen] = useState(false);
   const [isContactOpen, setIsContactOpen] = useState(true);
+
   const openContact = () => {
     setIsInteractionOpen(false);
     setIsContactOpen(true);
   };
+
   const openInteraction = () => {
     setIsInteractionOpen(true);
     setIsContactOpen(false);
   };
+
   return (
-    <div className="flex">
-      <div className="w-[12%]">
-        <div className="flex flex-col gap-4 px-16 pt-56 fixed ">
+    <div className="flex h-screen overflow-hidden">
+      {/* Fixed Sidebar */}
+      <div className="w-64 bg-white shadow-lg fixed h-full">
+        <div className="flex flex-col gap-4 px-6 pt-64">
           <button
             onClick={openContact}
             className={`flex gap-2 items-center ${
@@ -48,9 +52,13 @@ const Main = () => {
           </button>
         </div>
       </div>
-      <div className="w-[88%] pt-40">
-        {isInteractionOpen && <InteractionTable />}
-        {isContactOpen && <InfoTable />}
+
+      {/* Main Content Area */}
+      <div className="flex-1 ml-64 pt-40 overflow-y-scroll">
+        <div className="p-8 min-h-[calc(100vh-4rem)]">
+          {isInteractionOpen && <InteractionTable />}
+          {isContactOpen && <InfoTable />}
+        </div>
       </div>
     </div>
   );

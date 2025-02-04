@@ -213,24 +213,24 @@ const InteractionTable = () => {
   const columns = [
     columnHelper.accessor("id", {
       header: "ID",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("name", {
       header: "Name",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("type", {
       header: "Type",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+      cell: (info) => <div className="w-32 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("method", {
       header: "Method",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("date", {
       header: "Date",
       cell: (info) => (
-        <div className="truncate">
+        <div className="w-28 break-words">
           {new Date(info.getValue()).toLocaleDateString()}
         </div>
       ),
@@ -238,12 +238,12 @@ const InteractionTable = () => {
 
     columnHelper.accessor("duration", {
       header: "Duration",
-      cell: (info) => <div className="truncate">{info.getValue()}</div>,
+      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("notes", {
       header: "Notes",
       cell: (info) => (
-        <div className="max-w-[200px] truncate" title={info.getValue()}>
+        <div className="w-24 truncate" title={info.getValue()}>
           {info.getValue()?.length > 20
             ? `${info.getValue().substring(0, 20)}…`
             : info.getValue()}
@@ -332,7 +332,7 @@ const InteractionTable = () => {
   );
 
   return (
-    <div className="px-4 py-8 max-w-9xl mx-auto">
+    <div className="max-w-9xl mx-auto">
       <div className="flex justify-between items-center mb-6 pr-10">
         <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
         <div className="flex gap-10">
@@ -356,24 +356,26 @@ const InteractionTable = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-7 gap-4 mb-4">
-        <input
-          type="number"
-          placeholder="ID"
-          value={filters.id}
-          onChange={(e) => handleFilterChange("id", e.target.value)}
-          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <input
-          type="text"
-          placeholder="Name"
-          value={filters.name}
-          onChange={(e) => handleFilterChange("name", e.target.value)}
-          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
-
-        <div className="relative">
+      <div className="flex gap-4 mb-4">
+        <div className="w-[190px]">
+          <input
+            type="number"
+            placeholder="ID"
+            value={filters.id}
+            onChange={(e) => handleFilterChange("id", e.target.value)}
+            className="px-3 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="w-[190px]">
+          <input
+            type="text"
+            placeholder="Name"
+            value={filters.name}
+            onChange={(e) => handleFilterChange("name", e.target.value)}
+            className="px-3 w-full py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="relative w-[210px]">
           <div
             onClick={() => setIsTypeOpen(!isTypeOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -401,7 +403,7 @@ const InteractionTable = () => {
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative w-[190px]">
           <div
             onClick={() => setIsMethodOpen(!isMethodOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -432,7 +434,7 @@ const InteractionTable = () => {
           )}
         </div>
 
-        <div className="relative">
+        <div className="relative w-[200px]">
           <div className="flex items-center">
             <input
               type="date"
@@ -463,7 +465,7 @@ const InteractionTable = () => {
           </div>
         </div>
 
-        <div className="relative">
+        <div className="relative w-[200px]">
           <div
             onClick={() => setIsDurationOpen(!isDurationOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -499,7 +501,7 @@ const InteractionTable = () => {
           placeholder="Notes"
           value={filters.notes}
           onChange={(e) => handleFilterChange("notes", e.target.value)}
-          className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 w-[170px] py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 

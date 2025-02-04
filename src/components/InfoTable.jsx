@@ -45,7 +45,7 @@ const ContactTable = () => {
     relationshipType: [],
     upliftStatus: [],
     gender: [],
-    isDeleted: "", // Add this line
+    isDeleted: undefined,
   });
   const [isUpliftStatusOpen, setIsUpliftStatusOpen] = useState(false);
   const [isRelationshipTypeOpen, setIsRelationshipTypeOpen] = useState(false);
@@ -104,7 +104,6 @@ const ContactTable = () => {
         "state",
         "zip",
         "county",
-        "isDeleted",
       ];
 
       textFilters.forEach((key) => {
@@ -114,16 +113,19 @@ const ContactTable = () => {
         }
       });
 
-      ["relationshipType", "upliftStatus", "gender", "isDeleted"].forEach(
-        (key) => {
-          const values = searchFilters[key];
-          if (Array.isArray(values) && values.length) {
-            values.forEach((value) => params.append(key, value));
-          }
+      ["relationshipType", "upliftStatus", "gender"].forEach((key) => {
+        const values = searchFilters[key];
+        if (Array.isArray(values) && values.length) {
+          values.forEach((value) => params.append(key, value));
         }
-      );
+      });
+
+      if (searchFilters.isDeleted !== undefined) {
+        params.append("isDeleted", searchFilters.isDeleted.toString());
+      }
 
       const url = `${backendUrl}/person?${params.toString()}`;
+      console.log("Request URL:", url);
 
       const response = await axios.get(url, {
         headers: { Authorization: auth },
@@ -188,15 +190,15 @@ const ContactTable = () => {
     }),
     columnHelper.accessor("relationshipType", {
       header: "Relationship",
-      cell: (info) => <div className="w-25 break-words">{info.getValue()}</div>,
+      cell: (info) => <div className="w-32 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("name", {
       header: "Name",
-      cell: (info) => <div className="w-40 break-words">{info.getValue()}</div>,
+      cell: (info) => <div className="w-36 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("upliftStatus", {
       header: "Status",
-      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
+      cell: (info) => <div className="w-32 break-words">{info.getValue()}</div>,
     }),
     columnHelper.accessor("gender", {
       header: "Gender",
@@ -237,7 +239,7 @@ const ContactTable = () => {
     columnHelper.accessor("actions", {
       header: "Actions",
       cell: (info) => (
-        <div className="w-28 flex gap-2">
+        <div className="w-20 flex gap-2">
           {!info.row.original.isDeleted ? (
             <button
               onClick={() => handleDelete(info.row.original.id)}
@@ -364,7 +366,7 @@ const ContactTable = () => {
   };
 
   return (
-    <div className="px-4 py-8 max-w-9xl mx-auto">
+    <div className="max-w-9xl mx-auto h-full">
       <div className="flex items-center gap-6 mb-6">
         <h2 className="text-2xl font-semibold text-gray-800">
           Contact Directory
@@ -378,309 +380,344 @@ const ContactTable = () => {
           </button>
         </div>
       </div>
-      {/* Inner container with minimum width */}
-      <div className="min-w-[1400px]">
-        <div className="flex gap-2 mb-4 align-center min-w-full">
-          <div className="w-28">
-            <input
-              type="text"
-              placeholder="Account"
-              value={searchFilters.account || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  account: e.target.value,
-                }))
-              }
-              className="w-full px-2 py-1 border rounded"
-            />
-          </div>
-
-          <div className="w-32 relative" ref={relationshipRef}>
-            <div
-              onClick={() => setIsRelationshipTypeOpen(!isRelationshipTypeOpen)}
-              className={`px-2 py-1 border rounded cursor-pointer text-gray-400 flex items-center gap-1 ${
-                isRelationshipTypeOpen ? "bg-gray-200" : ""
-              }`}
-            >
-              Relationship <Icon icon="ri:arrow-down-s-line" />
-            </div>
-            {isRelationshipTypeOpen && (
-              <div className="absolute z-99 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
-                {Object.values(RelationshipType).map((type) => (
-                  <label
-                    key={type}
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                  >
-                    <input
-                      type="checkbox"
-                      value={type}
-                      checked={searchFilters.relationshipType.includes(type)}
-                      className="mr-2"
-                      onChange={(e) => {
-                        setSearchFilters((prev) => {
-                          const currentValues = prev.relationshipType;
-                          const updatedValues = e.target.checked
-                            ? [...currentValues, type]
-                            : currentValues.filter((val) => val !== type);
-                          return {
-                            ...prev,
-                            relationshipType: updatedValues,
-                          };
-                        });
-                      }}
-                    />
-                    {type}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="w-36">
-            <input
-              type="text"
-              placeholder="Name"
-              value={searchFilters.name || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  name: e.target.value,
-                }))
-              }
-              className="w-full px-2 py-1 border rounded"
-            />
-          </div>
-
-          <div className="w-28 relative" ref={upliftStatusRef}>
-            <div
-              onClick={() => setIsUpliftStatusOpen(!isUpliftStatusOpen)}
-              className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
-                isUpliftStatusOpen ? "bg-gray-200" : ""
-              }`}
-            >
-              Status <Icon icon="ri:arrow-down-s-line" />
-            </div>
-            {isUpliftStatusOpen && (
-              <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
-                {Object.values(UpliftStatus).map((type) => (
-                  <label
-                    key={type}
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                  >
-                    <input
-                      type="checkbox"
-                      value={type}
-                      checked={searchFilters.upliftStatus.includes(type)}
-                      className="mr-2"
-                      onChange={(e) => {
-                        setSearchFilters((prev) => {
-                          const currentValues = prev.upliftStatus;
-                          const updatedValues = e.target.checked
-                            ? [...currentValues, type]
-                            : currentValues.filter((val) => val !== type);
-                          return {
-                            ...prev,
-                            upliftStatus: updatedValues,
-                          };
-                        });
-                      }}
-                    />
-                    {type}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="w-28 relative" ref={genderRef}>
-            <div
-              onClick={() => setIsGenderOpen(!isGenderOpen)}
-              className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
-                isGenderOpen ? "bg-gray-200" : ""
-              }`}
-            >
-              Gender <Icon icon="ri:arrow-down-s-line" />
-            </div>
-            {isGenderOpen && (
-              <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
-                {Object.values(Gender).map((type) => (
-                  <label
-                    key={type}
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                  >
-                    <input
-                      type="checkbox"
-                      value={type}
-                      checked={searchFilters.gender.includes(type)}
-                      className="mr-2"
-                      onChange={(e) => {
-                        setSearchFilters((prev) => {
-                          const currentValues = prev.gender;
-                          const updatedValues = e.target.checked
-                            ? [...currentValues, type]
-                            : currentValues.filter((val) => val !== type);
-                          return {
-                            ...prev,
-                            gender: updatedValues,
-                          };
-                        });
-                      }}
-                    />
-                    {type}
-                  </label>
-                ))}
-              </div>
-            )}
-          </div>
-          <div className="w-28">
-            <input
-              type="text"
-              placeholder="Race"
-              value={searchFilters.race || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  race: e.target.value,
-                }))
-              }
-              className="px-2 py-1 border w-full rounded"
-            />
-          </div>
-          <div className="w-36">
-            <input
-              type="text"
-              placeholder="Street"
-              value={searchFilters.street || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  street: e.target.value,
-                }))
-              }
-              className="px-2 py-1 w-full border rounded"
-            />
-          </div>
-          <div className="w-36">
-            <input
-              type="text"
-              placeholder="City"
-              value={searchFilters.city || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  city: e.target.value,
-                }))
-              }
-              className="px-2 py-1 w-full border rounded"
-            />
-          </div>
-          <div className="w-24">
-            <input
-              type="text"
-              placeholder="State"
-              value={searchFilters.state || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  state: e.target.value,
-                }))
-              }
-              className="px-2 py-1 w-full border rounded"
-            />
-          </div>
-          <div className="w-24">
-            <input
-              type="text"
-              placeholder="Zip Code"
-              value={searchFilters.zip || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({ ...prev, zip: e.target.value }))
-              }
-              className="px-2 w-full py-1 border rounded"
-            />
-          </div>
-          <div className="w-28">
-            <input
-              type="text"
-              placeholder="County"
-              value={searchFilters.county || ""}
-              onChange={(e) =>
-                setSearchFilters((prev) => ({
-                  ...prev,
-                  county: e.target.value,
-                }))
-              }
-              className="px-2 w-full py-1 border rounded"
-            />
-          </div>
-          <div className="relative w-32" ref={deletedRef}>
-            <label
-              className={`px-2 py-1  w-full border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
-                isDeletedOpen ? "bg-gray-200" : ""
-              }`}
-            >
+      
+      {/* Wrap the table and filters in a container with fixed height */}
+      <div className="h-[calc(100vh-12rem)] flex flex-col">
+        {/* Filter section */}
+        <div className="min-w-[1400px]">
+          <div className="flex gap-2 mb-4 align-center min-w-full">
+            <div className="w-28">
               <input
-                type="checkbox"
-                checked={searchFilters.isDeleted === "true"}
+                type="text"
+                placeholder="Account"
+                value={searchFilters.account || ""}
                 onChange={(e) =>
                   setSearchFilters((prev) => ({
                     ...prev,
-                    isDeleted: e.target.checked ? "true" : "false",
+                    account: e.target.value,
                   }))
                 }
-                className="mr-1"
+                className="w-full px-2 py-1 border rounded"
               />
-              Is Deleted
-            </label>
+            </div>
+
+            <div className="w-32 relative" ref={relationshipRef}>
+              <div
+                onClick={() => setIsRelationshipTypeOpen(!isRelationshipTypeOpen)}
+                className={`px-2 py-1 border rounded cursor-pointer text-gray-400 flex items-center gap-1 ${
+                  isRelationshipTypeOpen ? "bg-gray-200" : ""
+                }`}
+              >
+                Relationship <Icon icon="ri:arrow-down-s-line" />
+              </div>
+              {isRelationshipTypeOpen && (
+                <div className="absolute z-99 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                  {Object.values(RelationshipType).map((type) => (
+                    <label
+                      key={type}
+                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    >
+                      <input
+                        type="checkbox"
+                        value={type}
+                        checked={searchFilters.relationshipType.includes(type)}
+                        className="mr-2"
+                        onChange={(e) => {
+                          setSearchFilters((prev) => {
+                            const currentValues = prev.relationshipType;
+                            const updatedValues = e.target.checked
+                              ? [...currentValues, type]
+                              : currentValues.filter((val) => val !== type);
+                            return {
+                              ...prev,
+                              relationshipType: updatedValues,
+                            };
+                          });
+                        }}
+                      />
+                      {type}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="w-36">
+              <input
+                type="text"
+                placeholder="Name"
+                value={searchFilters.name || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    name: e.target.value,
+                  }))
+                }
+                className="w-full px-2 py-1 border rounded"
+              />
+            </div>
+
+            <div className="w-28 relative" ref={upliftStatusRef}>
+              <div
+                onClick={() => setIsUpliftStatusOpen(!isUpliftStatusOpen)}
+                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
+                  isUpliftStatusOpen ? "bg-gray-200" : ""
+                }`}
+              >
+                Status <Icon icon="ri:arrow-down-s-line" />
+              </div>
+              {isUpliftStatusOpen && (
+                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                  {Object.values(UpliftStatus).map((type) => (
+                    <label
+                      key={type}
+                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    >
+                      <input
+                        type="checkbox"
+                        value={type}
+                        checked={searchFilters.upliftStatus.includes(type)}
+                        className="mr-2"
+                        onChange={(e) => {
+                          setSearchFilters((prev) => {
+                            const currentValues = prev.upliftStatus;
+                            const updatedValues = e.target.checked
+                              ? [...currentValues, type]
+                              : currentValues.filter((val) => val !== type);
+                            return {
+                              ...prev,
+                              upliftStatus: updatedValues,
+                            };
+                          });
+                        }}
+                      />
+                      {type}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="w-28 relative" ref={genderRef}>
+              <div
+                onClick={() => setIsGenderOpen(!isGenderOpen)}
+                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
+                  isGenderOpen ? "bg-gray-200" : ""
+                }`}
+              >
+                Gender <Icon icon="ri:arrow-down-s-line" />
+              </div>
+              {isGenderOpen && (
+                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                  {Object.values(Gender).map((type) => (
+                    <label
+                      key={type}
+                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    >
+                      <input
+                        type="checkbox"
+                        value={type}
+                        checked={searchFilters.gender.includes(type)}
+                        className="mr-2"
+                        onChange={(e) => {
+                          setSearchFilters((prev) => {
+                            const currentValues = prev.gender;
+                            const updatedValues = e.target.checked
+                              ? [...currentValues, type]
+                              : currentValues.filter((val) => val !== type);
+                            return {
+                              ...prev,
+                              gender: updatedValues,
+                            };
+                          });
+                        }}
+                      />
+                      {type}
+                    </label>
+                  ))}
+                </div>
+              )}
+            </div>
+            <div className="w-28">
+              <input
+                type="text"
+                placeholder="Race"
+                value={searchFilters.race || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    race: e.target.value,
+                  }))
+                }
+                className="px-2 py-1 border w-full rounded"
+              />
+            </div>
+            <div className="w-36">
+              <input
+                type="text"
+                placeholder="Street"
+                value={searchFilters.street || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    street: e.target.value,
+                  }))
+                }
+                className="px-2 py-1 w-full border rounded"
+              />
+            </div>
+            <div className="w-36">
+              <input
+                type="text"
+                placeholder="City"
+                value={searchFilters.city || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    city: e.target.value,
+                  }))
+                }
+                className="px-2 py-1 w-full border rounded"
+              />
+            </div>
+            <div className="w-24">
+              <input
+                type="text"
+                placeholder="State"
+                value={searchFilters.state || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    state: e.target.value,
+                  }))
+                }
+                className="px-2 py-1 w-full border rounded"
+              />
+            </div>
+            <div className="w-24">
+              <input
+                type="text"
+                placeholder="Zip Code"
+                value={searchFilters.zip || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({ ...prev, zip: e.target.value }))
+                }
+                className="px-2 w-full py-1 border rounded"
+              />
+            </div>
+            <div className="w-28">
+              <input
+                type="text"
+                placeholder="County"
+                value={searchFilters.county || ""}
+                onChange={(e) =>
+                  setSearchFilters((prev) => ({
+                    ...prev,
+                    county: e.target.value,
+                  }))
+                }
+                className="px-2 w-full py-1 border rounded"
+              />
+            </div>
+            <div className="relative w-32" ref={deletedRef}>
+              <div
+                onClick={() => setIsDeletedOpen(!isDeletedOpen)}
+                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center justify-between ${
+                  isDeletedOpen ? "bg-gray-200" : ""
+                }`}
+              >
+                <span>
+                  {searchFilters.isDeleted === undefined
+                    ? "All Records"
+                    : searchFilters.isDeleted
+                    ? "Deleted"
+                    : "Active"}
+                </span>
+                <Icon icon="ri:arrow-down-s-line" />
+              </div>
+              {isDeletedOpen && (
+                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                  <label
+                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    onClick={() => {
+                      setSearchFilters((prev) => {
+                        const { isDeleted, ...rest } = prev;
+                        return rest;
+                      });
+                      setIsDeletedOpen(false);
+                    }}
+                  >
+                    All Records
+                  </label>
+                  <label
+                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    onClick={() => {
+                      setSearchFilters((prev) => ({ ...prev, isDeleted: false }));
+                      setIsDeletedOpen(false);
+                    }}
+                  >
+                    Active
+                  </label>
+                  <label
+                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
+                    onClick={() => {
+                      setSearchFilters((prev) => ({ ...prev, isDeleted: true }));
+                      setIsDeletedOpen(false);
+                    }}
+                  >
+                    Deleted
+                  </label>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-        {/* </div> */}
-      </div>
 
-      <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-        <table className="min-w-full table-auto border-collapse">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="bg-gray-100 text-gray-700 text-center text-sm"
-              >
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-4 py-3 font-medium border-b border-r"
-                  >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </th>
-                ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row, idx) => (
-              <tr
-                key={row.id}
-                className={`${
-                  idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                } hover:bg-gray-100`}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="text-sm text-gray-600 border text-start"
-                  >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-        <PaginationControls />
+        {/* Table section with overflow */}
+        <div className="flex-1 overflow-x-auto overflow-y-auto bg-white shadow-lg rounded-lg">
+          <table className="min-w-full table-auto border-collapse">
+            <thead>
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr
+                  key={headerGroup.id}
+                  className="bg-gray-100 text-gray-700 text-center text-sm"
+                >
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-medium border-b border-r"
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row, idx) => (
+                <tr
+                  key={row.id}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  } hover:bg-gray-100`}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="text-sm text-gray-600 border text-start"
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          <PaginationControls />
+        </div>
       </div>
 
       <CSVImportModal
