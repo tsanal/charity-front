@@ -32,7 +32,7 @@ const Main = () => {
           <button
             onClick={openContact}
             className={`flex gap-2 items-center ${
-              isContactOpen ? "bg-gray-600 text-white" : "bg-blue-400"
+              isContactOpen ? "bg-blue-400" : "bg-gray-600 text-white"
             } p-2 rounded-lg`}
           >
             <Icon icon="gravity-ui:persons" />
@@ -41,7 +41,7 @@ const Main = () => {
           <button
             onClick={openInteraction}
             className={`flex gap-2 items-center ${
-              isInteractionOpen ? "bg-gray-600 text-white" : "bg-blue-400"
+              isInteractionOpen ? "bg-blue-400" : "bg-gray-600 text-white"
             } p-2 rounded-lg`}
           >
             <Icon icon="mingcute:react-fill" /> Interactions

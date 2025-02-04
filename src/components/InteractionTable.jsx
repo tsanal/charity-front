@@ -514,7 +514,7 @@ const InteractionTable = () => {
                 {headerGroup.headers.map((header) => (
                   <th
                     key={header.id}
-                    className="px-4 py-3 font-medium border-b"
+                    className="px-4 py-3 font-medium border-b border-r"
                   >
                     {flexRender(
                       header.column.columnDef.header,
@@ -534,7 +534,10 @@ const InteractionTable = () => {
                 } hover:bg-gray-100`}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-4 text-sm text-gray-600">
+                  <td
+                    key={cell.id}
+                    className="px-4 text-sm text-gray-600 border"
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
