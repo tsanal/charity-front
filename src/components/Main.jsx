@@ -31,7 +31,7 @@ const Main = () => {
   return (
     <div className="flex h-screen overflow-hidden">
       {/* Fixed Sidebar */}
-      <div className="w-64 bg-white shadow-lg fixed h-full">
+      <div className="w-64 bg-white">
         <div className="flex flex-col gap-4 px-6 pt-64">
           <button
             onClick={openContact}
@@ -54,7 +54,7 @@ const Main = () => {
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 ml-64 pt-40 overflow-y-scroll">
+      <div className="flex-1 pt-40 overflow-y-scroll">
         <div className="p-8 min-h-[calc(100vh-4rem)]">
           {isInteractionOpen && <InteractionTable />}
           {isContactOpen && <InfoTable />}
