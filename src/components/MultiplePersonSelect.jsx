@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 
 const MultiPersonSelect = ({ value, onChange }) => {
@@ -8,6 +8,7 @@ const MultiPersonSelect = ({ value, onChange }) => {
   const [selectedPersons, setSelectedPersons] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isFocused, setIsFocused] = useState(false);
+  const containerRef = useRef(null);
 
   // Parse initial value on mount and when value changes
   useEffect(() => {
@@ -27,6 +28,21 @@ const MultiPersonSelect = ({ value, onChange }) => {
     }
   }, [value]);
 
+  // Add this useEffect for handling outside clicks
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (containerRef.current && !containerRef.current.contains(event.target)) {
+        setIsFocused(false);
+        setSuggestions([]);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   const searchPersons = async (searchTerm) => {
     try {
       setIsLoading(true);
@@ -44,12 +60,7 @@ const MultiPersonSelect = ({ value, onChange }) => {
       });
 
       const data = await response.json();
-      // Filter out already selected persons
-      const filteredResults = data.results.filter(
-        (person) =>
-          !selectedPersons.some((selected) => selected.id === person.id)
-      );
-      setSuggestions(filteredResults);
+      setSuggestions(data.results);
     } catch (error) {
       console.error("Error searching persons:", error);
       setSuggestions([]);
@@ -86,18 +97,23 @@ const MultiPersonSelect = ({ value, onChange }) => {
   const handleInputBlur = () => {
     // Add small delay before closing suggestions to allow for click handling
     setTimeout(() => {
-      setIsFocused(false);
+      if (!document.activeElement?.closest('.suggestions-container')) {
+        setIsFocused(false);
+      }
     }, 200);
   };
 
-  const handleSelectPerson = (person) => {
-    const newSelected = [
-      ...selectedPersons,
-      { name: person.name, id: person.id },
-    ];
+  const handleTogglePerson = (person) => {
+    const isSelected = selectedPersons.some(p => p.id === person.id);
+    let newSelected;
+    
+    if (isSelected) {
+      newSelected = selectedPersons.filter(p => p.id !== person.id);
+    } else {
+      newSelected = [...selectedPersons, { name: person.name, id: person.id }];
+    }
+    
     setSelectedPersons(newSelected);
-    setInputValue("");
-    setSuggestions([]);
     onChange(newSelected);
   };
 
@@ -109,8 +125,12 @@ const MultiPersonSelect = ({ value, onChange }) => {
     onChange(newSelected);
   };
 
+  const isPersonSelected = (personId) => {
+    return selectedPersons.some(person => person.id === personId);
+  };
+
   return (
-    <div className="relative">
+    <div className="relative" ref={containerRef}>
       <div className="flex flex-wrap gap-2 mb-2">
         {selectedPersons.map((person) => (
           <div
@@ -142,17 +162,27 @@ const MultiPersonSelect = ({ value, onChange }) => {
           Searching...
         </div>
       )}
-      {!isLoading && suggestions.length > 0 && (
-        <div className="absolute z-10 w-[50%] mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
+      {(isFocused || suggestions.length > 0) && (
+        <div className="suggestions-container absolute z-10 w-full mt-1 bg-white border border-gray-300 rounded-md shadow-lg max-h-60 overflow-y-auto">
           {suggestions.map((person) => (
-            <div
+            <label
               key={person.id}
-              className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex"
-              onClick={() => handleSelectPerson(person)}
+              className="px-3 py-2 hover:bg-gray-100 cursor-pointer flex items-center gap-2"
             >
-              {person.name}
-            </div>
+              <input
+                type="checkbox"
+                checked={isPersonSelected(person.id)}
+                onChange={() => handleTogglePerson(person)}
+                className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+              />
+              <span>{person.name}</span>
+            </label>
           ))}
+          {suggestions.length === 0 && inputValue && !isLoading && (
+            <div className="px-3 py-2 text-gray-500">
+              No matching persons found
+            </div>
+          )}
         </div>
       )}
     </div>
