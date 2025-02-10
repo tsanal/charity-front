@@ -199,7 +199,11 @@ const ContactTable = () => {
     columnHelper.accessor("name", {
       header: "Name",
       cell: (info) => (
-        <div className="w-[140px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[140px] break-words pl-1" title={info.getValue()}>
+          {info.getValue()?.length > 15
+            ? `${info.getValue().substring(0, 15)}…`
+            : info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("upliftStatus", {
@@ -217,13 +221,21 @@ const ContactTable = () => {
     columnHelper.accessor("race", {
       header: "Race",
       cell: (info) => (
-        <div className="w-[112px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[112px] break-words pl-1" title={info.getValue()}>
+          {info.getValue()?.length > 15
+            ? `${info.getValue().substring(0, 15)}…`
+            : info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("street", {
       header: "Street",
       cell: (info) => (
-        <div className="w-[160px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[160px] break-words pl-1" title={info.getValue()}>
+          {info.getValue()?.length > 20
+            ? `${info.getValue().substring(0, 20)}…`
+            : info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("city", {
