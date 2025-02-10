@@ -4,6 +4,7 @@ import {
   getCoreRowModel,
   flexRender,
   createColumnHelper,
+  getSortedRowModel,
 } from "@tanstack/react-table";
 import axios from "axios";
 import CSVImportModal from "./ImportModal";
@@ -57,6 +58,8 @@ const ContactTable = () => {
   const upliftStatusRef = useRef(null);
   const genderRef = useRef(null);
 
+  const [sorting, setSorting] = useState([]);
+
   useEffect(() => {
     function handleClickOutside(event) {
       if (
@@ -94,6 +97,13 @@ const ContactTable = () => {
         page: page.toString(),
         limit: itemsPerPage.toString(),
       });
+
+      if (sorting.length > 0) {
+        const sortField = sorting[0].id;
+        const sortType = sorting[0].desc ? 'desc' : 'asc';
+        params.append('sortBy', sortField);
+        params.append('sortType', sortType);
+      }
 
       const textFilters = [
         "account",
@@ -139,9 +149,10 @@ const ContactTable = () => {
       console.error("Error fetching data:", error);
     }
   };
+
   useEffect(() => {
     fetchData();
-  }, [searchFilters, perPage, currentPage]);
+  }, [searchFilters, perPage, currentPage, sorting]);
 
   const handleRestore = async (id) => {
     if (window.confirm("Are you sure you want to restore this contact?")) {
@@ -185,19 +196,49 @@ const ContactTable = () => {
 
   const columns = [
     columnHelper.accessor("account", {
-      header: "Account",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Account
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[110px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("relationshipType", {
-      header: "Relationship",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Relationship
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[130px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("name", {
-      header: "Name",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Name
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[140px] break-words pl-1" title={info.getValue()}>
           {info.getValue()?.length > 15
@@ -207,19 +248,49 @@ const ContactTable = () => {
       ),
     }),
     columnHelper.accessor("upliftStatus", {
-      header: "Status",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Status
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[128px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("gender", {
-      header: "Gender",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Gender
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("race", {
-      header: "Race",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Race
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[112px] break-words pl-1" title={info.getValue()}>
           {info.getValue()?.length > 15
@@ -229,7 +300,17 @@ const ContactTable = () => {
       ),
     }),
     columnHelper.accessor("street", {
-      header: "Street",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Street
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[160px] break-words pl-1" title={info.getValue()}>
           {info.getValue()?.length > 20
@@ -239,31 +320,81 @@ const ContactTable = () => {
       ),
     }),
     columnHelper.accessor("city", {
-      header: "City",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          City
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[128px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("state", {
-      header: "State",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          State
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("zip", {
-      header: "ZIP",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          ZIP
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("county", {
-      header: "County",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          County
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[108px] break-words pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("isDeleted", {
-      header: "Is Deleted",
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Is Deleted
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[126px] break-words pl-1">
           {info.getValue() ? <p>Yes</p> : <p>No</p>}
@@ -272,6 +403,7 @@ const ContactTable = () => {
     }),
     columnHelper.accessor("actions", {
       header: "Actions",
+      enableSorting: false,
       cell: (info) => (
         <div className="w-20 pl-1">
           {!info.row.original.isDeleted ? (
@@ -297,7 +429,12 @@ const ContactTable = () => {
   const table = useReactTable({
     data,
     columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    manualSorting: true,
   });
 
   const PaginationControls = () => {
@@ -730,59 +867,66 @@ const ContactTable = () => {
               )}
             </div>
           </div>
-          <table className="min-w-full table-auto border-collapse">
-            <thead>
-              {table.getHeaderGroups().map((headerGroup) => (
-                <tr
-                  key={headerGroup.id}
-                  className="bg-gray-100 text-gray-700 text-center text-sm"
-                >
-                  {headerGroup.headers.map((header) => (
-                    <th
-                      key={header.id}
-                      className="px-4 py-3 font-medium border-b border-r"
-                    >
-                      {flexRender(
-                        header.column.columnDef.header,
-                        header.getContext()
-                      )}
-                    </th>
-                  ))}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {table.getRowModel().rows.map((row, idx) => (
-                <tr
-                  key={row.id}
-                  className={`${
-                    idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                  } hover:bg-gray-100`}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <td
-                      key={cell.id}
-                      className="text-sm text-gray-600 border text-start"
-                    >
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext()
-                      )}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+          <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
+            <div className="relative">
+              {/* Fixed Header */}
+              <div className="sticky top-0 z-10">
+                <table className="min-w-full table-auto border-collapse">
+                  <thead>
+                    {table.getHeaderGroups().map((headerGroup) => (
+                      <tr
+                        key={headerGroup.id}
+                        className="bg-gray-100 text-gray-700 text-center text-sm"
+                      >
+                        {headerGroup.headers.map((header) => (
+                          <th
+                            key={header.id}
+                            className="px-4 py-3 font-medium border-b border-r sticky top-0 bg-gray-100"
+                          >
+                            {flexRender(
+                              header.column.columnDef.header,
+                              header.getContext()
+                            )}
+                          </th>
+                        ))}
+                      </tr>
+                    ))}
+                  </thead>
+                </table>
+              </div>
 
-        {/* Always Visible Horizontal Scrollbar */}
-        <div className="overflow-x-auto">
-          <div className="w-full h-2"></div>
-        </div>
+              {/* Scrollable Body */}
+              <div className="max-h-[calc(100vh-25rem)] overflow-y-auto">
+                <table className="min-w-full table-auto border-collapse">
+                  <tbody>
+                    {table.getRowModel().rows.map((row, idx) => (
+                      <tr
+                        key={row.id}
+                        className={`${
+                          idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                        } hover:bg-gray-100`}
+                      >
+                        {row.getVisibleCells().map((cell) => (
+                          <td
+                            key={cell.id}
+                            className="text-sm text-gray-600 border text-start"
+                          >
+                            {flexRender(
+                              cell.column.columnDef.cell,
+                              cell.getContext()
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
 
-        {/* Pagination */}
-        <PaginationControls />
+            <PaginationControls />
+          </div>
+        </div>
       </div>
 
       {/* </div> */}

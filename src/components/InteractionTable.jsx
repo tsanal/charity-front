@@ -37,6 +37,7 @@ const InteractionTable = () => {
     notes: "",
     duration: "",
     date: "",
+    account: "",
   });
 
   const [isTypeOpen, setIsTypeOpen] = useState(false);
@@ -73,11 +74,13 @@ const InteractionTable = () => {
     filterParams = filters
   ) => {
     try {
-      // Convert filters to query parameters
       const queryParams = new URLSearchParams({
         page: page,
         limit: itemsPerPage,
         ...(filterParams.id && { id: filterParams.id }),
+        ...(filterParams.account?.trim() && {
+          account: filterParams.account.trim(),
+        }),
         ...(filterParams.name && { name: filterParams.name }),
         ...(filterParams.type && { type: filterParams.type }),
         ...(filterParams.method && { method: filterParams.method }),
@@ -118,7 +121,14 @@ const InteractionTable = () => {
   const handleEdit = (interaction) => {
     setCurrentInteraction({
       ...interaction,
-      date: interaction.date.split("T")[0], // Format date for input field
+      date: interaction.date.split("T")[0],
+      persons: [
+        {
+          id: interaction.personId,
+          name: interaction.name,
+          account: interaction.account,
+        },
+      ],
     });
     setIsEditing(true);
     setIsModalOpen(true);
@@ -145,7 +155,8 @@ const InteractionTable = () => {
     setIsSubmitting(true);
 
     try {
-      const { id, persons, ...baseInteractionData } = currentInteraction;
+      const { id, persons, personId, ...baseInteractionData } =
+        currentInteraction;
 
       if (!persons || persons.length === 0) {
         throw new Error("At least one person must be selected");
@@ -161,10 +172,7 @@ const InteractionTable = () => {
           )}?`
         : `Create interactions for the following contacts: ${personNames}?`;
 
-      // Ask for confirmation
-      const isConfirmed = window.confirm(confirmMessage);
-
-      if (!isConfirmed) {
+      if (!window.confirm(confirmMessage)) {
         setIsSubmitting(false);
         return;
       }
@@ -174,26 +182,25 @@ const InteractionTable = () => {
         const interactionData = {
           ...baseInteractionData,
           name: person.name,
-          personId: person.id,
+          account: person.account,
         };
 
+        // Add personId only for new interactions, not for updates
+        if (!isEditing || index > 0) {
+          interactionData.personId = person.id;
+        }
+
         if (isEditing && id && index === 0) {
-          // Update the first interaction if editing
           return axios.patch(
             `${backendUrl}/interaction/${id}`,
             interactionData,
             {
-              headers: {
-                Authorization: auth,
-              },
+              headers: { Authorization: auth },
             }
           );
         } else {
-          // Create new interactions for additional persons
           return axios.post(`${backendUrl}/interaction`, interactionData, {
-            headers: {
-              Authorization: auth,
-            },
+            headers: { Authorization: auth },
           });
         }
       });
@@ -212,38 +219,47 @@ const InteractionTable = () => {
 
   const columns = [
     columnHelper.accessor("id", {
-      header: "ID",
-      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
+      header: () => <div className="w-[70px] text-center">ID</div>,
+      cell: (info) => (
+        <div className="w-[70px] break-words">{info.getValue()}</div>
+      ),
+    }),
+    columnHelper.accessor("account", {
+      header: () => <div className="w-[80px] text-center">Account</div>,
+      cell: (info) => <div className="w-[80px]">{info.getValue() || ""}</div>,
     }),
     columnHelper.accessor("name", {
-      header: "Name",
-      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
+      header: () => <div className="w-[260px] text-center">Name</div>,
+      cell: (info) => <div className="w-[260px]">{info.getValue()}</div>,
     }),
     columnHelper.accessor("type", {
-      header: "Type",
-      cell: (info) => <div className="w-32 break-words">{info.getValue()}</div>,
+      header: () => <div className="w-[110px] text-center">Type</div>,
+      cell: (info) => <div className="w-[110px]">{info.getValue()}</div>,
     }),
     columnHelper.accessor("method", {
-      header: "Method",
-      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
+      header: () => <div className="w-[120px] text-center">Method</div>,
+      cell: (info) => (
+        <div className="w-[120px] break-words">{info.getValue()}</div>
+      ),
     }),
     columnHelper.accessor("date", {
-      header: "Date",
+      header: () => <div className="w-[140px] text-center">Date</div>,
       cell: (info) => (
-        <div className="w-28 break-words">
+        <div className="w-[140px] break-words">
           {new Date(info.getValue()).toLocaleDateString()}
         </div>
       ),
     }),
-
     columnHelper.accessor("duration", {
-      header: "Duration",
-      cell: (info) => <div className="w-28 break-words">{info.getValue()}</div>,
+      header: () => <div className="w-[120px] text-center">Duration</div>,
+      cell: (info) => (
+        <div className="w-[120px] break-words">{info.getValue()}</div>
+      ),
     }),
     columnHelper.accessor("notes", {
-      header: "Notes",
+      header: () => <div className="w-[250px] text-center">Notes</div>,
       cell: (info) => (
-        <div className="w-24 truncate" title={info.getValue()}>
+        <div className="w-[250px] truncate" title={info.getValue()}>
           {info.getValue()?.length > 20
             ? `${info.getValue().substring(0, 20)}…`
             : info.getValue()}
@@ -251,9 +267,9 @@ const InteractionTable = () => {
       ),
     }),
     columnHelper.accessor("actions", {
-      header: "Actions",
+      header: () => <div className="w-[120px] text-center">Actions</div>,
       cell: (info) => (
-        <div className="flex justify-center gap-2">
+        <div className="flex w-[120px] gap-2">
           <button
             onClick={() => handleEdit(info.row.original)}
             className="bg-yellow-500 hover:bg-yellow-600 text-white px-2 py-1 rounded"
@@ -356,8 +372,8 @@ const InteractionTable = () => {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-4">
-        <div className="w-[190px]">
+      <div className="flex gap-2 mb-4">
+        <div className="w-[100px]">
           <input
             type="number"
             placeholder="ID"
@@ -366,7 +382,21 @@ const InteractionTable = () => {
             className="px-3 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="w-[190px]">
+        <div className="w-[110px]">
+          <input
+            type="text"
+            placeholder="Account"
+            value={filters.account}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value === "" || /^\d+$/.test(value)) {
+                handleFilterChange("account", value);
+              }
+            }}
+            className="px-3 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+        <div className="w-[280px]">
           <input
             type="text"
             placeholder="Name"
@@ -375,14 +405,14 @@ const InteractionTable = () => {
             className="px-3 w-full py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="relative w-[210px]">
+        <div className="relative w-[140px]">
           <div
             onClick={() => setIsTypeOpen(!isTypeOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
               isTypeOpen ? "bg-gray-50" : ""
             }`}
           >
-            {filters.type || "Select Type"}
+            {filters.type || "Type"}
             <span className="ml-2">▼</span>
           </div>
           {isTypeOpen && (
@@ -403,14 +433,14 @@ const InteractionTable = () => {
           )}
         </div>
 
-        <div className="relative w-[190px]">
+        <div className="relative w-[140px]">
           <div
             onClick={() => setIsMethodOpen(!isMethodOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
               isMethodOpen ? "bg-gray-50" : ""
             }`}
           >
-            {filters.method || "Select Method"}
+            {filters.method || "Method"}
             <span className="ml-2">▼</span>
           </div>
           {isMethodOpen && (
@@ -434,7 +464,7 @@ const InteractionTable = () => {
           )}
         </div>
 
-        <div className="relative w-[200px]">
+        <div className="relative w-[160px]">
           <div className="flex items-center">
             <input
               type="date"
@@ -465,14 +495,14 @@ const InteractionTable = () => {
           </div>
         </div>
 
-        <div className="relative w-[200px]">
+        <div className="relative w-[140px]">
           <div
             onClick={() => setIsDurationOpen(!isDurationOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
               isDurationOpen ? "bg-gray-50" : ""
             }`}
           >
-            {filters.duration || "Select Duration"}
+            {filters.duration || "Duration"}
             <span className="ml-2">▼</span>
           </div>
           {isDurationOpen && (
@@ -501,57 +531,72 @@ const InteractionTable = () => {
           placeholder="Notes"
           value={filters.notes}
           onChange={(e) => handleFilterChange("notes", e.target.value)}
-          className="px-3 w-[170px] py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="px-3 w-[260px] py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
 
-      <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-        <table className="min-w-full table-auto border-collapse">
-          <thead>
-            {table.getHeaderGroups().map((headerGroup) => (
-              <tr
-                key={headerGroup.id}
-                className="bg-gray-100 text-gray-700 text-center text-sm"
-              >
-                {headerGroup.headers.map((header) => (
-                  <th
-                    key={header.id}
-                    className="px-4 py-3 font-medium border-b border-r"
+      <div className="bg-white shadow-lg rounded-lg">
+        <div className="relative">
+          {/* Fixed Header */}
+          <div className="sticky top-0 z-10">
+            <table className="min-w-full table-auto border-collapse">
+              <thead>
+                {table.getHeaderGroups().map((headerGroup) => (
+                  <tr
+                    key={headerGroup.id}
+                    className="bg-gray-100 text-gray-700 text-center text-sm"
                   >
-                    {flexRender(
-                      header.column.columnDef.header,
-                      header.getContext()
-                    )}
-                  </th>
+                    {headerGroup.headers.map((header) => (
+                      <th
+                        key={header.id}
+                        className="px-4 py-3 font-medium border-b border-r"
+                      >
+                        {flexRender(
+                          header.column.columnDef.header,
+                          header.getContext()
+                        )}
+                      </th>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </thead>
-          <tbody>
-            {table.getRowModel().rows.map((row, idx) => (
-              <tr
-                key={row.id}
-                className={`${
-                  idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                } hover:bg-gray-100`}
-              >
-                {row.getVisibleCells().map((cell) => (
-                  <td
-                    key={cell.id}
-                    className="px-4 text-sm text-gray-600 border text-start"
+              </thead>
+            </table>
+          </div>
+
+          {/* Scrollable Body */}
+          <div className="max-h-[calc(100vh-25rem)] overflow-y-auto">
+            <table className="min-w-full table-auto border-collapse">
+              <tbody>
+                {table.getRowModel().rows.map((row, idx) => (
+                  <tr
+                    key={row.id}
+                    className={`${
+                      idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                    } hover:bg-gray-100`}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                  </td>
+                    {row.getVisibleCells().map((cell) => (
+                      <td
+                        key={cell.id}
+                        className="px-4 text-sm text-gray-600 border text-start"
+                      >
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext()
+                        )}
+                      </td>
+                    ))}
+                  </tr>
                 ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <PaginationControls />
       </div>
 
       {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
           <div className="bg-white rounded-lg p-6 max-w-md w-full">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold">
@@ -573,15 +618,21 @@ const InteractionTable = () => {
                   >
                     Person(s)
                   </label>
-                  <MultiPersonSelect
-                    value={currentInteraction.persons}
-                    onChange={(selectedPersons) => {
-                      setCurrentInteraction((prev) => ({
-                        ...prev,
-                        persons: selectedPersons,
-                      }));
-                    }}
-                  />
+                  {isEditing ? (
+                    <div className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-50">
+                      {currentInteraction.name}
+                    </div>
+                  ) : (
+                    <MultiPersonSelect
+                      value={currentInteraction.persons}
+                      onChange={(selectedPersons) => {
+                        setCurrentInteraction((prev) => ({
+                          ...prev,
+                          persons: selectedPersons,
+                        }));
+                      }}
+                    />
+                  )}
                 </div>
                 <div>
                   <label

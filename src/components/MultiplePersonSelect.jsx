@@ -48,7 +48,6 @@ const MultiPersonSelect = ({ value, onChange }) => {
       setIsLoading(true);
       let url = `${process.env.REACT_APP_BACKEND_URL}/person?relationshipType=Participant&upliftStatus=Active&upliftStatus=Prospective&limit=50`;
 
-      // Only add name parameter if searchTerm exists
       if (searchTerm?.trim()) {
         url += `&name=${encodeURIComponent(searchTerm)}`;
       }
@@ -60,7 +59,10 @@ const MultiPersonSelect = ({ value, onChange }) => {
       });
 
       const data = await response.json();
-      setSuggestions(data.results);
+      setSuggestions(data.results.map(person => ({
+        ...person,
+        displayName: `${person.name} (${person.account || ''})`
+      })));
     } catch (error) {
       console.error("Error searching persons:", error);
       setSuggestions([]);
@@ -110,7 +112,11 @@ const MultiPersonSelect = ({ value, onChange }) => {
     if (isSelected) {
       newSelected = selectedPersons.filter(p => p.id !== person.id);
     } else {
-      newSelected = [...selectedPersons, { name: person.name, id: person.id }];
+      newSelected = [...selectedPersons, { 
+        name: person.name,
+        id: person.id,
+        account: person.account
+      }];
     }
     
     setSelectedPersons(newSelected);
