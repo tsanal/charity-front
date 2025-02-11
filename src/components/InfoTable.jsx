@@ -10,6 +10,7 @@ import axios from "axios";
 import CSVImportModal from "./ImportModal";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import { Icon } from "@iconify/react/dist/iconify.js";
+import DownloadButton from "./DoanloadButton";
 
 const RelationshipType = {
   Donor: "Donor",
@@ -550,6 +551,7 @@ const ContactTable = () => {
             Import CSV
           </button>
         </div>
+        <DownloadButton  auth={auth} type='person'/>
       </div>
 
       {/* Wrap the table and filters in a container with fixed height */}

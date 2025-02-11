@@ -9,6 +9,7 @@ import axios from "axios";
 import MultiPersonSelect from "./MultiplePersonSelect";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import { Calendar } from "lucide-react";
+import DownloadButtons from "./DoanloadButton";
 
 const InteractionTable = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -350,7 +351,10 @@ const InteractionTable = () => {
   return (
     <div className="max-w-9xl mx-auto">
       <div className="flex justify-between items-center mb-6 pr-10">
+        <div className="flex items-center gap-6">
         <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
+        <DownloadButtons auth={auth} type='interaction'/>
+        </div>
         <div className="flex gap-10">
           <button
             onClick={() => {
