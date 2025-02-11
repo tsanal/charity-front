@@ -1,39 +1,9 @@
-import React, { useState, useEffect } from "react";
-import { io } from "socket.io-client";
+import React, { useState } from "react";
 
 const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [status, setStatus] = useState({ type: "", message: "" });
-  const [progress, setProgress] = useState(null);
-  const [socket, setSocket] = useState(null);
-
-  useEffect(() => {
-    // Initialize socket connection
-    const newSocket = io(backendUrl);
-    setSocket(newSocket);
-
-    // Cleanup on unmount
-    return () => newSocket.disconnect();
-  }, [backendUrl]);
-
-  useEffect(() => {
-    if (!socket) return;
-
-    socket.on('uploadProgress', (progressData) => {
-      setProgress(progressData);
-      if (progressData.status === 'completed') {
-        setStatus({ type: "success", message: "File uploaded successfully!" });
-        setTimeout(() => onClose(), 1500);
-      } else if (progressData.status === 'error') {
-        setStatus({ type: "error", message: "Upload failed" });
-      }
-    });
-
-    return () => {
-      socket.off('uploadProgress');
-    };
-  }, [socket]);
 
   if (!isOpen) return null;
 
@@ -72,16 +42,22 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
-    setProgress(null);
 
     try {
       if (!selectedFile) {
         throw new Error("Please select an Excel file");
       }
 
+      const confirmMessage = `Upload Excel file: ${selectedFile.name}?`;
+      const isConfirmed = window.confirm(confirmMessage);
+
+      if (!isConfirmed) {
+        setIsSubmitting(false);
+        return;
+      }
+
       const formData = new FormData();
-      formData.append("file", selectedFile);
-      formData.append("socketId", socket.id);
+      formData.append("excel", selectedFile);
 
       await fetch(`${backendUrl}/excel/upload`, {
         method: "POST",
@@ -91,44 +67,22 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
         },
       });
 
+      setStatus({ type: "success", message: "File uploaded successfully!" });
+      setSelectedFile(null);
+      // Reset form and close modal after successful upload
+      e.target.reset();
+      setTimeout(() => {
+        onClose();
+      }, 1500);
     } catch (error) {
       console.error("Error uploading Excel file:", error);
       setStatus({
         type: "error",
         message: error.message || "Error uploading file. Please try again.",
       });
+    } finally {
       setIsSubmitting(false);
     }
-  };
-
-  const ProgressBar = () => {
-    if (!progress) return null;
-
-    const percentage = Math.round((progress.processed / progress.totalRecords) * 100);
-    
-    return (
-      <div className="mt-4">
-        <div className="flex justify-between mb-1">
-          <span className="text-sm font-medium text-blue-700">
-            Processing records ({progress.processed}/{progress.totalRecords})
-          </span>
-          <span className="text-sm font-medium text-blue-700">{percentage}%</span>
-        </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div
-            className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-            style={{ width: `${percentage}%` }}
-          ></div>
-        </div>
-        <div className="mt-2 text-sm text-gray-600">
-          <p>Success: {progress.success}</p>
-          <p>Failed: {progress.failed}</p>
-          {progress.errors.length > 0 && (
-            <p className="text-red-500">Errors: {progress.errors.length}</p>
-          )}
-        </div>
-      </div>
-    );
   };
 
   return (
@@ -216,9 +170,6 @@ const CSVImportModal = ({ isOpen, onClose, backendUrl, auth }) => {
                   </div>
                 </label>
               </div>
-
-              {/* Progress Bar */}
-              <ProgressBar />
 
               {/* Status Message */}
               {status.message && (
