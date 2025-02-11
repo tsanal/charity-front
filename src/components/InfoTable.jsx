@@ -101,9 +101,9 @@ const ContactTable = () => {
 
       if (sorting.length > 0) {
         const sortField = sorting[0].id;
-        const sortType = sorting[0].desc ? 'desc' : 'asc';
-        params.append('sortBy', sortField);
-        params.append('sortType', sortType);
+        const sortType = sorting[0].desc ? "desc" : "asc";
+        params.append("sortBy", sortField);
+        params.append("sortType", sortType);
       }
 
       const textFilters = [
@@ -205,7 +205,9 @@ const ContactTable = () => {
           Account
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -221,7 +223,9 @@ const ContactTable = () => {
           Relationship
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -237,7 +241,9 @@ const ContactTable = () => {
           Name
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -257,7 +263,9 @@ const ContactTable = () => {
           Status
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -273,7 +281,9 @@ const ContactTable = () => {
           Gender
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -289,7 +299,9 @@ const ContactTable = () => {
           Race
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -309,7 +321,9 @@ const ContactTable = () => {
           Street
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -329,7 +343,9 @@ const ContactTable = () => {
           City
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -345,7 +361,9 @@ const ContactTable = () => {
           State
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -361,7 +379,9 @@ const ContactTable = () => {
           ZIP
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -377,7 +397,9 @@ const ContactTable = () => {
           County
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -393,7 +415,9 @@ const ContactTable = () => {
           Is Deleted
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -551,7 +575,8 @@ const ContactTable = () => {
             Import CSV
           </button>
         </div>
-        <DownloadButton  auth={auth} type='person'/>
+
+        <DownloadButton auth={auth} type="person" backendUrl={backendUrl} />
       </div>
 
       {/* Wrap the table and filters in a container with fixed height */}

@@ -352,8 +352,12 @@ const InteractionTable = () => {
     <div className="max-w-9xl mx-auto">
       <div className="flex justify-between items-center mb-6 pr-10">
         <div className="flex items-center gap-6">
-        <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
-        <DownloadButtons auth={auth} type='interaction'/>
+          <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
+          <DownloadButtons
+            backendUrl={backendUrl}
+            auth={auth}
+            type="interaction"
+          />
         </div>
         <div className="flex gap-10">
           <button
