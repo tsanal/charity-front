@@ -211,7 +211,7 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[110px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[110px] text-start pl-1">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("relationshipType", {
@@ -229,7 +229,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[130px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[130px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("name", {
@@ -247,7 +249,10 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[140px] break-words pl-1" title={info.getValue()}>
+        <div
+          className="w-[140px] text-start break-words pl-1"
+          title={info.getValue()}
+        >
           {info.getValue()?.length > 15
             ? `${info.getValue().substring(0, 15)}…`
             : info.getValue()}
@@ -269,7 +274,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[128px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[128px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("gender", {
@@ -287,7 +294,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[96px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("race", {
@@ -305,7 +314,10 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[112px] break-words pl-1" title={info.getValue()}>
+        <div
+          className="w-[112px] text-start break-words pl-1"
+          title={info.getValue()}
+        >
           {info.getValue()?.length > 15
             ? `${info.getValue().substring(0, 15)}…`
             : info.getValue()}
@@ -327,7 +339,10 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[160px] break-words pl-1" title={info.getValue()}>
+        <div
+          className="w-[160px] text-start break-words pl-1"
+          title={info.getValue()}
+        >
           {info.getValue()?.length > 20
             ? `${info.getValue().substring(0, 20)}…`
             : info.getValue()}
@@ -349,7 +364,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[128px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[128px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("state", {
@@ -367,7 +384,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[96px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("zip", {
@@ -385,7 +404,9 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[96px] break-words pl-1">{info.getValue()}</div>
+        <div className="w-[96px] text-start break-words pl-1">
+          {info.getValue()}
+        </div>
       ),
     }),
     columnHelper.accessor("county", {
@@ -421,7 +442,7 @@ const ContactTable = () => {
         </div>
       ),
       cell: (info) => (
-        <div className="w-[126px] break-words pl-1">
+        <div className="w-[126px] text-start break-words pl-1">
           {info.getValue() ? <p>Yes</p> : <p>No</p>}
         </div>
       ),
@@ -562,7 +583,7 @@ const ContactTable = () => {
   };
 
   return (
-    <div className="max-w-9xl mx-auto h-full">
+    <div className="max-w-9xl mx-auto h-[calc(100vh-200px)] flex flex-col">
       <div className="flex justify-between items-center gap-6 mb-6 pr-10">
         <div className="flex gap-4 items-center">
           <h2 className="text-2xl font-semibold text-gray-800">
@@ -581,17 +602,8 @@ const ContactTable = () => {
         </div>
       </div>
 
-      {/* Wrap the table and filters in a container with fixed height */}
-      {/* <div className="h-[calc(100vh-12rem)] flex flex-col"> */}
-      {/* Filter section */}
-      {/* <div className="min-w-[1400px]"> */}
-
-      {/* </div> */}
-
-      {/* Table section with overflow */}
-      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg">
-        {/* Table Wrapper with Horizontal Scroll */}
-        <div className="overflow-x-auto flex-grow">
+      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg min-h-0">
+        <div className="p-4">
           <div className="flex gap-2.5 mb-4 align-center min-w-full">
             <div className="w-[106px]">
               <input
@@ -896,69 +908,73 @@ const ContactTable = () => {
               )}
             </div>
           </div>
-          <div className="overflow-x-auto bg-white shadow-lg rounded-lg">
-            <div className="relative">
-              {/* Fixed Header */}
-              <div className="sticky top-0 z-10">
-                <table className="min-w-full table-auto border-collapse">
-                  <thead>
-                    {table.getHeaderGroups().map((headerGroup) => (
-                      <tr
-                        key={headerGroup.id}
-                        className="bg-gray-100 text-gray-700 text-center text-sm"
-                      >
-                        {headerGroup.headers.map((header) => (
-                          <th
-                            key={header.id}
-                            className="px-4 py-3 font-medium border-b border-r sticky top-0 bg-gray-100"
-                          >
-                            {flexRender(
-                              header.column.columnDef.header,
-                              header.getContext()
-                            )}
-                          </th>
-                        ))}
-                      </tr>
-                    ))}
-                  </thead>
-                </table>
-              </div>
+        </div>
 
-              {/* Scrollable Body */}
-              <div className="max-h-[calc(100vh-25rem)] overflow-y-auto">
-                <table className="min-w-full table-auto border-collapse">
-                  <tbody>
-                    {table.getRowModel().rows.map((row, idx) => (
-                      <tr
-                        key={row.id}
-                        className={`${
-                          idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                        } hover:bg-gray-100`}
-                      >
-                        {row.getVisibleCells().map((cell) => (
-                          <td
-                            key={cell.id}
-                            className="text-sm text-gray-600 border text-start"
-                          >
-                            {flexRender(
-                              cell.column.columnDef.cell,
-                              cell.getContext()
-                            )}
-                          </td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
+        <div className="flex-1 overflow-auto min-h-0">
+          <table className="min-w-full table-auto border-collapse">
+            <thead className="sticky top-0 bg-white z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr key={headerGroup.id}>
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-medium border text-left whitespace-nowrap"
+                      style={{
+                        width: {
+                          account: "110px",
+                          relationshipType: "130px",
+                          name: "140px",
+                          upliftStatus: "128px",
+                          gender: "96px",
+                          race: "112px",
+                          street: "160px",
+                          city: "128px",
+                          state: "96px",
+                          zip: "96px",
+                          county: "108px",
+                          isDeleted: "126px",
+                          actions: "80px",
+                        }[header.column.id],
+                      }}
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row, idx) => (
+                <tr
+                  key={row.id}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  } hover:bg-gray-100`}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="text-sm text-gray-600 border text-start"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
 
-            <PaginationControls />
-          </div>
+        <div className="border-t">
+          <PaginationControls />
         </div>
       </div>
-
-      {/* </div> */}
 
       <CSVImportModal
         isOpen={isImportModalOpen}

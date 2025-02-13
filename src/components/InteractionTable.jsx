@@ -4,12 +4,14 @@ import {
   getCoreRowModel,
   flexRender,
   createColumnHelper,
+  getSortedRowModel,
 } from "@tanstack/react-table";
 import axios from "axios";
 import MultiPersonSelect from "./MultiplePersonSelect";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import { Calendar } from "lucide-react";
 import DownloadButtons from "./DoanloadButton";
+import { Icon } from "@iconify/react";
 
 const InteractionTable = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -44,6 +46,8 @@ const InteractionTable = () => {
   const [isTypeOpen, setIsTypeOpen] = useState(false);
   const [isMethodOpen, setIsMethodOpen] = useState(false);
   const [isDurationOpen, setIsDurationOpen] = useState(false);
+
+  const [sorting, setSorting] = useState([]);
 
   const types = [
     "Any",
@@ -88,6 +92,10 @@ const InteractionTable = () => {
         ...(filterParams.notes && { notes: filterParams.notes }),
         ...(filterParams.duration && { duration: filterParams.duration }),
         ...(filterParams.date && { date: filterParams.date }),
+        ...(sorting.length > 0 && {
+          sortBy: sorting[0].id,
+          sortType: sorting[0].desc ? "desc" : "asc",
+        }),
       });
 
       const response = await axios.get(
@@ -108,8 +116,8 @@ const InteractionTable = () => {
   };
 
   useEffect(() => {
-    fetchData(currentPage, perPage, filters);
-  }, [currentPage, perPage, filters]);
+    fetchData();
+  }, [currentPage, perPage, filters, sorting]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -220,7 +228,17 @@ const InteractionTable = () => {
 
   const columns = [
     columnHelper.accessor("id", {
-      header: () => <div className="w-[70px] text-center">ID</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          ID
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[70px] break-words">{info.getValue()}</div>
       ),
@@ -305,7 +323,12 @@ const InteractionTable = () => {
   const table = useReactTable({
     data,
     columns,
+    state: {
+      sorting,
+    },
+    onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
+    manualSorting: true,
   });
   const PaginationControls = () => (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
@@ -349,7 +372,7 @@ const InteractionTable = () => {
   );
 
   return (
-    <div className="max-w-9xl mx-auto">
+    <div className="max-w-9xl mx-auto h-[calc(100vh-200px)] flex flex-col">
       <div className="flex justify-between items-center mb-6 pr-10">
         <div className="flex items-center gap-6">
           <h2 className="text-2xl font-semibold text-gray-800">Interactions</h2>
@@ -543,64 +566,57 @@ const InteractionTable = () => {
         />
       </div>
 
-      <div className="bg-white shadow-lg rounded-lg">
-        <div className="relative">
-          {/* Fixed Header */}
-          <div className="sticky top-0 z-10">
-            <table className="min-w-full table-auto border-collapse">
-              <thead>
-                {table.getHeaderGroups().map((headerGroup) => (
-                  <tr
-                    key={headerGroup.id}
-                    className="bg-gray-100 text-gray-700 text-center text-sm"
-                  >
-                    {headerGroup.headers.map((header) => (
-                      <th
-                        key={header.id}
-                        className="px-4 py-3 font-medium border-b border-r"
-                      >
-                        {flexRender(
-                          header.column.columnDef.header,
-                          header.getContext()
-                        )}
-                      </th>
-                    ))}
-                  </tr>
-                ))}
-              </thead>
-            </table>
-          </div>
-
-          {/* Scrollable Body */}
-          <div className="max-h-[calc(100vh-25rem)] overflow-y-auto">
-            <table className="min-w-full table-auto border-collapse">
-              <tbody>
-                {table.getRowModel().rows.map((row, idx) => (
-                  <tr
-                    key={row.id}
-                    className={`${
-                      idx % 2 === 0 ? "bg-gray-50" : "bg-white"
-                    } hover:bg-gray-100`}
-                  >
-                    {row.getVisibleCells().map((cell) => (
-                      <td
-                        key={cell.id}
-                        className="px-4 text-sm text-gray-600 border text-start"
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext()
-                        )}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg min-h-0">
+        <div className="flex-1 overflow-auto min-h-0">
+          <table className="min-w-full table-auto border-collapse">
+            <thead className="sticky top-0 bg-white z-10">
+              {table.getHeaderGroups().map((headerGroup) => (
+                <tr
+                  key={headerGroup.id}
+                  className="bg-gray-100 text-gray-700 text-center text-sm"
+                >
+                  {headerGroup.headers.map((header) => (
+                    <th
+                      key={header.id}
+                      className="px-4 py-3 font-medium border text-left whitespace-nowrap"
+                    >
+                      {flexRender(
+                        header.column.columnDef.header,
+                        header.getContext()
+                      )}
+                    </th>
+                  ))}
+                </tr>
+              ))}
+            </thead>
+            <tbody>
+              {table.getRowModel().rows.map((row, idx) => (
+                <tr
+                  key={row.id}
+                  className={`${
+                    idx % 2 === 0 ? "bg-gray-50" : "bg-white"
+                  } hover:bg-gray-100`}
+                >
+                  {row.getVisibleCells().map((cell) => (
+                    <td
+                      key={cell.id}
+                      className="px-4 text-sm text-gray-600 border text-start"
+                    >
+                      {flexRender(
+                        cell.column.columnDef.cell,
+                        cell.getContext()
+                      )}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        <PaginationControls />
+        <div className="border-t">
+          <PaginationControls />
+        </div>
       </div>
 
       {isModalOpen && (
