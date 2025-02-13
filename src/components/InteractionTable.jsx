@@ -244,25 +244,75 @@ const InteractionTable = () => {
       ),
     }),
     columnHelper.accessor("account", {
-      header: () => <div className="w-[80px] text-center">Account</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Account
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => <div className="w-[80px]">{info.getValue() || ""}</div>,
     }),
     columnHelper.accessor("name", {
-      header: () => <div className="w-[260px] text-center">Name</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Name
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => <div className="w-[260px]">{info.getValue()}</div>,
     }),
     columnHelper.accessor("type", {
-      header: () => <div className="w-[110px] text-center">Type</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Type
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => <div className="w-[110px]">{info.getValue()}</div>,
     }),
     columnHelper.accessor("method", {
-      header: () => <div className="w-[120px] text-center">Method</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Method
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[120px] break-words">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("date", {
-      header: () => <div className="w-[140px] text-center">Date</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Date
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[140px] break-words">
           {new Date(info.getValue()).toLocaleDateString()}
@@ -270,13 +320,33 @@ const InteractionTable = () => {
       ),
     }),
     columnHelper.accessor("duration", {
-      header: () => <div className="w-[120px] text-center">Duration</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Duration
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[120px] break-words">{info.getValue()}</div>
       ),
     }),
     columnHelper.accessor("notes", {
-      header: () => <div className="w-[250px] text-center">Notes</div>,
+      header: ({ column }) => (
+        <div
+          className="cursor-pointer select-none flex items-center gap-1"
+          onClick={() => column.toggleSorting()}
+        >
+          Notes
+          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+        </div>
+      ),
       cell: (info) => (
         <div className="w-[250px] truncate" title={info.getValue()}>
           {info.getValue()?.length > 20
@@ -287,6 +357,7 @@ const InteractionTable = () => {
     }),
     columnHelper.accessor("actions", {
       header: () => <div className="w-[120px] text-center">Actions</div>,
+      enableSorting: false,
       cell: (info) => (
         <div className="flex w-[120px] gap-2">
           <button
