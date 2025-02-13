@@ -40,7 +40,7 @@ const PersonExportButton = ({ auth, backendUrl }) => {
     <button
       onClick={handleDownload}
       disabled={isLoading}
-      className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 
+      className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 
                  text-white font-medium rounded-lg shadow-sm transition-colors
                  duration-200 ease-in-out disabled:opacity-50 disabled:cursor-not-allowed"
     >
@@ -83,7 +83,7 @@ const PersonExportButton = ({ auth, backendUrl }) => {
               d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
             />
           </svg>
-          export
+          Export
         </>
       )}
     </button>

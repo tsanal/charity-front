@@ -359,7 +359,7 @@ const InteractionTable = () => {
             type="interaction"
           />
         </div>
-        <div className="flex gap-10">
+        <div className="">
           <button
             onClick={() => {
               setIsEditing(false);

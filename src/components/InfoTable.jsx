@@ -563,20 +563,22 @@ const ContactTable = () => {
 
   return (
     <div className="max-w-9xl mx-auto h-full">
-      <div className="flex items-center gap-6 mb-6">
-        <h2 className="text-2xl font-semibold text-gray-800">
-          Contact Directory
-        </h2>
+      <div className="flex justify-between items-center gap-6 mb-6 pr-10">
+        <div className="flex gap-4 items-center">
+          <h2 className="text-2xl font-semibold text-gray-800">
+            Contact Directory
+          </h2>
+          <DownloadButton auth={auth} type="person" backendUrl={backendUrl} />
+        </div>
+
         <div>
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg transition-colors"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-lg transition-colors"
           >
             Import Excel
           </button>
         </div>
-
-        <DownloadButton auth={auth} type="person" backendUrl={backendUrl} />
       </div>
 
       {/* Wrap the table and filters in a container with fixed height */}
