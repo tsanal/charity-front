@@ -633,7 +633,10 @@ const ContactTable = () => {
                 Relationship <Icon icon="ri:arrow-down-s-line" />
               </div>
               {isRelationshipTypeOpen && (
-                <div className="absolute z-99 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                <div
+                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
+                  style={{ zIndex: 99 }}
+                >
                   {Object.values(RelationshipType).map((type) => (
                     <label
                       key={type}
@@ -691,7 +694,10 @@ const ContactTable = () => {
                 Status <Icon icon="ri:arrow-down-s-line" />
               </div>
               {isUpliftStatusOpen && (
-                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                <div
+                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
+                  style={{ zIndex: 99 }}
+                >
                   {Object.values(UpliftStatus).map((type) => (
                     <label
                       key={type}
@@ -732,7 +738,10 @@ const ContactTable = () => {
                 Gender <Icon icon="ri:arrow-down-s-line" />
               </div>
               {isGenderOpen && (
-                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                <div
+                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
+                  style={{ zIndex: 99 }}
+                >
                   {Object.values(Gender).map((type) => (
                     <label
                       key={type}
@@ -867,7 +876,10 @@ const ContactTable = () => {
                 <Icon icon="ri:arrow-down-s-line" />
               </div>
               {isDeletedOpen && (
-                <div className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col">
+                <div
+                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
+                  style={{ zIndex: 99 }}
+                >
                   <label
                     className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
                     onClick={() => {

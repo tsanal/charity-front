@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   useReactTable,
   getCoreRowModel,
@@ -48,13 +48,39 @@ const InteractionTable = () => {
   const [isDurationOpen, setIsDurationOpen] = useState(false);
 
   const [sorting, setSorting] = useState([]);
+  const methodRef = useRef(null);
+  const typeRef = useRef(null);
+  const durationRef = useRef(null);
 
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (methodRef.current && !methodRef.current.contains(event.target)) {
+        setIsMethodOpen(false);
+      }
+
+      if (typeRef.current && !typeRef.current.contains(event.target)) {
+        setIsTypeOpen(false);
+      }
+
+      if (durationRef.current && !durationRef.current.contains(event.target)) {
+        setIsDurationOpen(false);
+      }
+    }
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
   const types = [
     "Any",
     "Follow-up",
     "Initial Contact",
     "Meeting",
     "Support",
+
+    "Uplift",
+    "Mini Grant",
     "Other",
   ];
   const methods = ["Any", "Email", "Phone", "In-person", "Video", "Other"];
@@ -236,7 +262,9 @@ const InteractionTable = () => {
           ID
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -252,7 +280,9 @@ const InteractionTable = () => {
           Account
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => <div className="w-[80px]">{info.getValue() || ""}</div>,
@@ -266,7 +296,9 @@ const InteractionTable = () => {
           Name
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => <div className="w-[260px]">{info.getValue()}</div>,
@@ -280,7 +312,9 @@ const InteractionTable = () => {
           Type
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => <div className="w-[110px]">{info.getValue()}</div>,
@@ -294,7 +328,9 @@ const InteractionTable = () => {
           Method
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -310,7 +346,9 @@ const InteractionTable = () => {
           Date
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -328,7 +366,9 @@ const InteractionTable = () => {
           Duration
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
@@ -344,13 +384,15 @@ const InteractionTable = () => {
           Notes
           {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
           {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && <Icon icon="ri:sort-line" className="opacity-30" />}
+          {!column.getIsSorted() && (
+            <Icon icon="ri:sort-line" className="opacity-30" />
+          )}
         </div>
       ),
       cell: (info) => (
         <div className="w-[250px] truncate" title={info.getValue()}>
-          {info.getValue()?.length > 20
-            ? `${info.getValue().substring(0, 20)}…`
+          {info.getValue()?.length > 35
+            ? `${info.getValue().substring(0, 35)}…`
             : info.getValue()}
         </div>
       ),
@@ -507,7 +549,7 @@ const InteractionTable = () => {
             className="px-3 w-full py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
-        <div className="relative w-[140px]">
+        <div className="relative w-[140px]" ref={typeRef}>
           <div
             onClick={() => setIsTypeOpen(!isTypeOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -518,7 +560,10 @@ const InteractionTable = () => {
             <span className="ml-2">▼</span>
           </div>
           {isTypeOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+            <div
+              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
+              style={{ zIndex: 99 }}
+            >
               {types.map((type) => (
                 <div
                   key={type}
@@ -535,7 +580,7 @@ const InteractionTable = () => {
           )}
         </div>
 
-        <div className="relative w-[140px]">
+        <div className="relative w-[140px]" ref={methodRef}>
           <div
             onClick={() => setIsMethodOpen(!isMethodOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -546,7 +591,10 @@ const InteractionTable = () => {
             <span className="ml-2">▼</span>
           </div>
           {isMethodOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+            <div
+              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
+              style={{ zIndex: 99 }}
+            >
               {methods.map((method) => (
                 <div
                   key={method}
@@ -597,7 +645,7 @@ const InteractionTable = () => {
           </div>
         </div>
 
-        <div className="relative w-[140px]">
+        <div className="relative w-[140px]" ref={durationRef}>
           <div
             onClick={() => setIsDurationOpen(!isDurationOpen)}
             className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
@@ -608,7 +656,10 @@ const InteractionTable = () => {
             <span className="ml-2">▼</span>
           </div>
           {isDurationOpen && (
-            <div className="absolute z-10 mt-1 w-full bg-white border rounded-md shadow-lg">
+            <div
+              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
+              style={{ zIndex: 99 }}
+            >
               {durations.map((duration) => (
                 <div
                   key={duration}
@@ -766,6 +817,7 @@ const InteractionTable = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={currentInteraction.date}
                     onChange={handleInputChange}
+                    max={new Date().toISOString().split("T")[0]}
                     required
                   />
                 </div>
