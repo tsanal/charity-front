@@ -156,7 +156,7 @@ const InteractionTable = () => {
   const handleEdit = (interaction) => {
     setCurrentInteraction({
       ...interaction,
-      date: interaction.date.split("T")[0],
+      date: interaction.date,
       persons: [
         {
           id: interaction.personId,
@@ -484,6 +484,12 @@ const InteractionTable = () => {
     </div>
   );
 
+  const getCurrentDate = () => {
+    const today = new Date();
+    // Format date as YYYY-MM-DD
+    return today.toISOString().split('T')[0];
+  };
+
   return (
     <div className="max-w-9xl mx-auto h-[calc(100vh-200px)] flex flex-col">
       <div className="flex justify-between items-center mb-6 pr-10">
@@ -621,9 +627,7 @@ const InteractionTable = () => {
               value={filters.date}
               onChange={(e) => {
                 const date = e.target.value ? new Date(e.target.value) : "";
-                const formattedDate = date
-                  ? date.toISOString().split("T")[0]
-                  : "";
+                const formattedDate = date ? date.toISOString() : "";
                 handleFilterChange("date", formattedDate);
               }}
               className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
@@ -817,7 +821,7 @@ const InteractionTable = () => {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                     value={currentInteraction.date}
                     onChange={handleInputChange}
-                    max={new Date().toISOString().split("T")[0]}
+                    max={getCurrentDate()}
                     required
                   />
                 </div>
