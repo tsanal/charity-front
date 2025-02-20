@@ -1,16 +1,21 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
   getSortedRowModel,
+  getFilterModel,
+  getFacetedRowModel,
+  getFacetedUniqueValues,
+  getFilteredRowModel,
 } from "@tanstack/react-table";
 import axios from "axios";
 import CSVImportModal from "./ImportModal";
 import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import { Icon } from "@iconify/react/dist/iconify.js";
 import DownloadButton from "./DoanloadButton";
+import { debounce } from "lodash";
 
 const RelationshipType = {
   Donor: "Donor",
@@ -34,6 +39,80 @@ const Gender = {
   Female: "Female",
 };
 
+const DebouncedInput = React.memo(({
+  value: initialValue,
+  onChange,
+  debounce = 500,
+  ...props
+}) => {
+  const [value, setValue] = useState(initialValue);
+
+  useEffect(() => {
+    setValue(initialValue);
+  }, [initialValue]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      onChange(value);
+    }, debounce);
+
+    return () => clearTimeout(timeout);
+  }, [value]);
+
+  const handleChange = React.useCallback((e) => {
+    setValue(e.target.value);
+  }, []);
+
+  return (
+    <input
+      {...props}
+      value={value}
+      onChange={handleChange}
+    />
+  );
+});
+
+const TextFilter = React.memo(({ column }) => {
+  const [value, setValue] = useState(column.getFilterValue() ?? '');
+
+  const onChangeDebounced = useCallback(
+    debounce((value) => {
+      column.setFilterValue(value);
+    }, 500),
+    [column]
+  );
+
+  const onChange = useCallback((e) => {
+    setValue(e.target.value);
+    onChangeDebounced(e.target.value);
+  }, [onChangeDebounced]);
+
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder="Filter..."
+      className="w-full px-2 py-1 border rounded text-sm"
+    />
+  );
+});
+
+const SelectFilter = React.memo(({ column, options }) => {
+  return (
+    <select
+      value={column.getFilterValue() ?? ''}
+      onChange={e => column.setFilterValue(e.target.value)}
+      className="w-full px-2 py-1 border rounded text-sm"
+    >
+      <option value="">All</option>
+      {options.map(option => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+});
+
 const ContactTable = () => {
   const auth = useAuthHeader();
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -43,12 +122,6 @@ const ContactTable = () => {
   const [totalPages, setTotalPages] = useState(1);
   const [perPage, setPerPage] = useState(10);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-  const [searchFilters, setSearchFilters] = useState({
-    relationshipType: [],
-    upliftStatus: [],
-    gender: [],
-    isDeleted: undefined,
-  });
   const [isUpliftStatusOpen, setIsUpliftStatusOpen] = useState(false);
   const [isRelationshipTypeOpen, setIsRelationshipTypeOpen] = useState(false);
   const [isGenderOpen, setIsGenderOpen] = useState(false);
@@ -60,6 +133,9 @@ const ContactTable = () => {
   const genderRef = useRef(null);
 
   const [sorting, setSorting] = useState([]);
+  const [columnFilters, setColumnFilters] = useState([]);
+  const [globalFilter, setGlobalFilter] = useState('');
+  const [columnVisibility, setColumnVisibility] = useState({});
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -92,68 +168,45 @@ const ContactTable = () => {
     };
   }, []);
 
-  const fetchData = async (page = currentPage, itemsPerPage = perPage) => {
-    try {
-      const params = new URLSearchParams({
-        page: page.toString(),
-        limit: itemsPerPage.toString(),
-      });
+  const fetchData = useCallback(
+    debounce(() => {
+      const fetchDataAsync = async () => {
+        try {
+          const params = new URLSearchParams();
+          
+          if (sorting.length > 0) {
+            params.append("sortBy", sorting[0].id);
+            params.append("sortType", sorting[0].desc ? "desc" : "asc");
+          }
 
-      if (sorting.length > 0) {
-        const sortField = sorting[0].id;
-        const sortType = sorting[0].desc ? "desc" : "asc";
-        params.append("sortBy", sortField);
-        params.append("sortType", sortType);
-      }
+          columnFilters.forEach(filter => {
+            params.append(filter.id, filter.value);
+          });
 
-      const textFilters = [
-        "account",
-        "name",
-        "race",
-        "street",
-        "city",
-        "state",
-        "zip",
-        "county",
-      ];
+          params.append("page", currentPage.toString());
+          params.append("limit", perPage.toString());
 
-      textFilters.forEach((key) => {
-        const value = searchFilters[key];
-        if (value && typeof value === "string" && value.trim()) {
-          params.append(key, value.trim());
+          const response = await axios.get(
+            `${backendUrl}/person?${params.toString()}`,
+            {
+              headers: { Authorization: auth },
+            }
+          );
+
+          setData(response.data.results);
+          setTotalPages(Math.ceil(response.data.totalCount / perPage));
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
-      });
-
-      ["relationshipType", "upliftStatus", "gender"].forEach((key) => {
-        const values = searchFilters[key];
-        if (Array.isArray(values) && values.length) {
-          values.forEach((value) => params.append(key, value));
-        }
-      });
-
-      if (searchFilters.isDeleted !== undefined) {
-        params.append("isDeleted", searchFilters.isDeleted.toString());
-      }
-
-      const url = `${backendUrl}/person?${params.toString()}`;
-      console.log("Request URL:", url);
-
-      const response = await axios.get(url, {
-        headers: { Authorization: auth },
-      });
-
-      setData(response.data.results);
-      const totalItems = response.data.totalCount;
-      const calculatedTotalPages = Math.ceil(totalItems / itemsPerPage);
-      setTotalPages(calculatedTotalPages);
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
+      };
+      fetchDataAsync();
+    }, 300),
+    [sorting, columnFilters, currentPage, perPage, auth, backendUrl]
+  );
 
   useEffect(() => {
     fetchData();
-  }, [searchFilters, perPage, currentPage, sorting]);
+  }, [sorting, columnFilters, currentPage, perPage]);
 
   const handleRestore = async (id) => {
     if (window.confirm("Are you sure you want to restore this contact?")) {
@@ -198,34 +251,48 @@ const ContactTable = () => {
   const columns = [
     columnHelper.accessor("account", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Account
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Account
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
         <div className="w-[110px] text-start pl-1">{info.getValue()}</div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("relationshipType", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Relationship
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Relationship
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={Object.values(RelationshipType)} 
+            />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -233,19 +300,25 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("name", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Name
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Name
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -258,19 +331,28 @@ const ContactTable = () => {
             : info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("upliftStatus", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Status
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Status
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={Object.values(UpliftStatus)} 
+            />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -278,19 +360,28 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("gender", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Gender
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Gender
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={Object.values(Gender)} 
+            />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -298,19 +389,25 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("race", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Race
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Race
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -323,19 +420,25 @@ const ContactTable = () => {
             : info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("street", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Street
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Street
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -348,19 +451,25 @@ const ContactTable = () => {
             : info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("city", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          City
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            City
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -368,19 +477,25 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("state", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          State
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            State
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -388,19 +503,25 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("zip", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          ZIP
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            ZIP
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -408,37 +529,52 @@ const ContactTable = () => {
           {info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("county", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          County
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            County
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
         <div className="w-[108px] break-words pl-1">{info.getValue()}</div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("isDeleted", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Is Deleted
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Is Deleted
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={['true', 'false']} 
+            />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -446,6 +582,7 @@ const ContactTable = () => {
           {info.getValue() ? <p>Yes</p> : <p>No</p>}
         </div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("actions", {
       header: "Actions",
@@ -477,10 +614,22 @@ const ContactTable = () => {
     columns,
     state: {
       sorting,
+      columnFilters,
+      globalFilter,
+      columnVisibility,
     },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
+    onGlobalFilterChange: setGlobalFilter,
+    onColumnVisibilityChange: setColumnVisibility,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFacetedRowModel: getFacetedRowModel(),
+    getFacetedUniqueValues: getFacetedUniqueValues(),
     manualSorting: true,
+    manualFiltering: true,
+    enableColumnFilters: true,
   });
 
   const PaginationControls = () => {
@@ -603,325 +752,6 @@ const ContactTable = () => {
       </div>
 
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg min-h-0">
-        <div className="p-4">
-          <div className="flex gap-2.5 mb-4 align-center min-w-full">
-            <div className="w-[106px]">
-              <input
-                type="text"
-                placeholder="Account"
-                value={searchFilters.account || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    account: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-
-            <div className="relative w-[126px]" ref={relationshipRef}>
-              <div
-                onClick={() =>
-                  setIsRelationshipTypeOpen(!isRelationshipTypeOpen)
-                }
-                className={`px-2 py-1 border rounded cursor-pointer text-gray-400 flex items-center gap-1 ${
-                  isRelationshipTypeOpen ? "bg-gray-200" : ""
-                }`}
-              >
-                Relationship <Icon icon="ri:arrow-down-s-line" />
-              </div>
-              {isRelationshipTypeOpen && (
-                <div
-                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
-                  style={{ zIndex: 99 }}
-                >
-                  {Object.values(RelationshipType).map((type) => (
-                    <label
-                      key={type}
-                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    >
-                      <input
-                        type="checkbox"
-                        value={type}
-                        checked={searchFilters.relationshipType.includes(type)}
-                        className="mr-2"
-                        onChange={(e) => {
-                          setSearchFilters((prev) => {
-                            const currentValues = prev.relationshipType;
-                            const updatedValues = e.target.checked
-                              ? [...currentValues, type]
-                              : currentValues.filter((val) => val !== type);
-                            return {
-                              ...prev,
-                              relationshipType: updatedValues,
-                            };
-                          });
-                        }}
-                      />
-                      {type}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="w-[136px]">
-              <input
-                type="text"
-                placeholder="Name"
-                value={searchFilters.name || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    name: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-
-            <div className="w-[124px] relative" ref={upliftStatusRef}>
-              <div
-                onClick={() => setIsUpliftStatusOpen(!isUpliftStatusOpen)}
-                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
-                  isUpliftStatusOpen ? "bg-gray-200" : ""
-                }`}
-                style={{ width: "inherit" }}
-              >
-                Status <Icon icon="ri:arrow-down-s-line" />
-              </div>
-              {isUpliftStatusOpen && (
-                <div
-                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
-                  style={{ zIndex: 99 }}
-                >
-                  {Object.values(UpliftStatus).map((type) => (
-                    <label
-                      key={type}
-                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    >
-                      <input
-                        type="checkbox"
-                        value={type}
-                        checked={searchFilters.upliftStatus.includes(type)}
-                        className="mr-2"
-                        onChange={(e) => {
-                          setSearchFilters((prev) => {
-                            const currentValues = prev.upliftStatus;
-                            const updatedValues = e.target.checked
-                              ? [...currentValues, type]
-                              : currentValues.filter((val) => val !== type);
-                            return {
-                              ...prev,
-                              upliftStatus: updatedValues,
-                            };
-                          });
-                        }}
-                      />
-                      {type}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="w-[92px] relative" ref={genderRef}>
-              <div
-                onClick={() => setIsGenderOpen(!isGenderOpen)}
-                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center gap-1 ${
-                  isGenderOpen ? "bg-gray-200" : ""
-                }`}
-              >
-                Gender <Icon icon="ri:arrow-down-s-line" />
-              </div>
-              {isGenderOpen && (
-                <div
-                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
-                  style={{ zIndex: 99 }}
-                >
-                  {Object.values(Gender).map((type) => (
-                    <label
-                      key={type}
-                      className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    >
-                      <input
-                        type="checkbox"
-                        value={type}
-                        checked={searchFilters.gender.includes(type)}
-                        className="mr-2"
-                        onChange={(e) => {
-                          setSearchFilters((prev) => {
-                            const currentValues = prev.gender;
-                            const updatedValues = e.target.checked
-                              ? [...currentValues, type]
-                              : currentValues.filter((val) => val !== type);
-                            return {
-                              ...prev,
-                              gender: updatedValues,
-                            };
-                          });
-                        }}
-                      />
-                      {type}
-                    </label>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="w-[108px]">
-              <input
-                type="text"
-                placeholder="Race"
-                value={searchFilters.race || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    race: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="w-[156px]">
-              <input
-                type="text"
-                placeholder="Street"
-                value={searchFilters.street || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    street: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="w-[124px]">
-              <input
-                type="text"
-                placeholder="City"
-                value={searchFilters.city || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    city: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="w-[92px]">
-              <input
-                type="text"
-                placeholder="State"
-                value={searchFilters.state || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    state: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="w-[92px]">
-              <input
-                type="text"
-                placeholder="Zip"
-                value={searchFilters.zip || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({ ...prev, zip: e.target.value }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="w-[104px]">
-              <input
-                type="text"
-                placeholder="County"
-                value={searchFilters.county || ""}
-                onChange={(e) =>
-                  setSearchFilters((prev) => ({
-                    ...prev,
-                    county: e.target.value,
-                  }))
-                }
-                className="px-2 py-1 border rounded"
-                style={{ width: "inherit" }}
-              />
-            </div>
-            <div className="relative w-[122px]" ref={deletedRef}>
-              <div
-                onClick={() => setIsDeletedOpen(!isDeletedOpen)}
-                className={`px-2 py-1 border text-gray-400 rounded cursor-pointer flex items-center justify-between ${
-                  isDeletedOpen ? "bg-gray-200" : ""
-                }`}
-                style={{ width: "inherit" }}
-              >
-                <span>
-                  {searchFilters.isDeleted === undefined
-                    ? "All"
-                    : searchFilters.isDeleted
-                    ? "Deleted"
-                    : "Active"}
-                </span>
-                <Icon icon="ri:arrow-down-s-line" />
-              </div>
-              {isDeletedOpen && (
-                <div
-                  className="absolute z-10 border rounded bg-white mt-1 w-full shadow-lg flex flex-col"
-                  style={{ zIndex: 99 }}
-                >
-                  <label
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    onClick={() => {
-                      setSearchFilters((prev) => {
-                        const { isDeleted, ...rest } = prev;
-                        return rest;
-                      });
-                      setIsDeletedOpen(false);
-                    }}
-                  >
-                    All Records
-                  </label>
-                  <label
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    onClick={() => {
-                      setSearchFilters((prev) => ({
-                        ...prev,
-                        isDeleted: false,
-                      }));
-                      setIsDeletedOpen(false);
-                    }}
-                  >
-                    Active
-                  </label>
-                  <label
-                    className="py-2 hover:bg-gray-100 cursor-pointer flex px-2"
-                    onClick={() => {
-                      setSearchFilters((prev) => ({
-                        ...prev,
-                        isDeleted: true,
-                      }));
-                      setIsDeletedOpen(false);
-                    }}
-                  >
-                    Deleted
-                  </label>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
         <div className="flex-1 overflow-auto min-h-0">
           <table className="min-w-full table-auto border-collapse">
             <thead className="sticky top-0 bg-white z-10">
@@ -931,23 +761,6 @@ const ContactTable = () => {
                     <th
                       key={header.id}
                       className="px-4 py-3 font-medium border text-left whitespace-nowrap"
-                      style={{
-                        width: {
-                          account: "110px",
-                          relationshipType: "130px",
-                          name: "140px",
-                          upliftStatus: "128px",
-                          gender: "96px",
-                          race: "112px",
-                          street: "160px",
-                          city: "128px",
-                          state: "96px",
-                          zip: "96px",
-                          county: "108px",
-                          isDeleted: "126px",
-                          actions: "80px",
-                        }[header.column.id],
-                      }}
                     >
                       {flexRender(
                         header.column.columnDef.header,

@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   useReactTable,
   getCoreRowModel,
   flexRender,
   createColumnHelper,
   getSortedRowModel,
+  getFilteredRowModel,
 } from "@tanstack/react-table";
 import axios from "axios";
 import MultiPersonSelect from "./MultiplePersonSelect";
@@ -12,6 +13,99 @@ import useAuthHeader from "react-auth-kit/hooks/useAuthHeader";
 import { Calendar } from "lucide-react";
 import DownloadButtons from "./DoanloadButton";
 import { Icon } from "@iconify/react";
+import { debounce } from "lodash";
+
+const TextFilter = React.memo(({ column }) => {
+  const [value, setValue] = useState(column.getFilterValue() ?? '');
+
+  const onChangeDebounced = useCallback(
+    debounce((value) => {
+      column.setFilterValue(value);
+    }, 500),
+    [column]
+  );
+
+  const onChange = useCallback((e) => {
+    setValue(e.target.value);
+    onChangeDebounced(e.target.value);
+  }, [onChangeDebounced]);
+
+  return (
+    <input
+      type="text"
+      value={value}
+      onChange={onChange}
+      placeholder="Filter..."
+      className="w-full px-2 py-1 border rounded text-sm"
+    />
+  );
+});
+
+const SelectFilter = React.memo(({ column, options }) => {
+  return (
+    <select
+      value={column.getFilterValue() ?? ''}
+      onChange={e => column.setFilterValue(e.target.value)}
+      className="w-full px-2 py-1 border rounded text-sm"
+    >
+      <option value="">All</option>
+      {options.map(option => (
+        <option key={option} value={option}>{option}</option>
+      ))}
+    </select>
+  );
+});
+
+const DateFilter = React.memo(({ column }) => {
+  const [value, setValue] = useState(column.getFilterValue() ?? '');
+
+  const onChange = useCallback((e) => {
+    const date = e.target.value;
+    setValue(date);
+    
+    if (date) {
+      // Convert to UTC for consistency
+      const localDate = new Date(date);
+      const utcDate = new Date(Date.UTC(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        12,
+        0,
+        0,
+        0
+      ));
+      column.setFilterValue(utcDate.toISOString());
+    } else {
+      column.setFilterValue('');
+    }
+  }, [column]);
+
+  const handleClear = useCallback(() => {
+    setValue('');
+    column.setFilterValue('');
+  }, [column]);
+
+  return (
+    <div className="relative">
+      <input
+        type="date"
+        value={value}
+        onChange={onChange}
+        className="w-full px-2 py-1 border rounded text-sm"
+      />
+      {value && (
+        <button
+          onClick={handleClear}
+          className="absolute right-0 top-[-4] -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl"
+          type="button"
+        >
+          ×
+        </button>
+      )}
+    </div>
+  );
+});
 
 const InteractionTable = () => {
   const backendUrl = process.env.REACT_APP_BACKEND_URL;
@@ -51,6 +145,8 @@ const InteractionTable = () => {
   const methodRef = useRef(null);
   const typeRef = useRef(null);
   const durationRef = useRef(null);
+
+  const [columnFilters, setColumnFilters] = useState([]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -93,64 +189,95 @@ const InteractionTable = () => {
   ];
 
   const handleFilterChange = (key, value) => {
+    if (key === 'date' && value) {
+      // Convert filter date to UTC
+      const localDate = new Date(value);
+      const utcDate = new Date(Date.UTC(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        12,
+        0,
+        0,
+        0
+      ));
+      value = utcDate.toISOString();
+    }
+    
     const newFilters = { ...filters, [key]: value };
     setFilters(newFilters);
-    setCurrentPage(1); // Reset to first page when filters change
-    fetchData(1, perPage, newFilters); // Immediately fetch with new filters
+    setCurrentPage(1);
+    fetchData(1, perPage, newFilters);
   };
 
-  const fetchData = async (
-    page = currentPage,
-    itemsPerPage = perPage,
-    filterParams = filters
-  ) => {
-    try {
-      const queryParams = new URLSearchParams({
-        page: page,
-        limit: itemsPerPage,
-        ...(filterParams.id && { id: filterParams.id }),
-        ...(filterParams.account?.trim() && {
-          account: filterParams.account.trim(),
-        }),
-        ...(filterParams.name && { name: filterParams.name }),
-        ...(filterParams.type && { type: filterParams.type }),
-        ...(filterParams.method && { method: filterParams.method }),
-        ...(filterParams.notes && { notes: filterParams.notes }),
-        ...(filterParams.duration && { duration: filterParams.duration }),
-        ...(filterParams.date && { date: filterParams.date }),
-        ...(sorting.length > 0 && {
-          sortBy: sorting[0].id,
-          sortType: sorting[0].desc ? "desc" : "asc",
-        }),
-      });
+  const fetchData = useCallback(
+    debounce(() => {
+      const fetchDataAsync = async () => {
+        try {
+          const params = new URLSearchParams();
+          
+          if (sorting.length > 0) {
+            params.append("sortBy", sorting[0].id);
+            params.append("sortType", sorting[0].desc ? "desc" : "asc");
+          }
 
-      const response = await axios.get(
-        `${backendUrl}/interaction?${queryParams.toString()}`,
-        {
-          headers: {
-            Authorization: auth,
-          },
+          columnFilters.forEach(filter => {
+            params.append(filter.id, filter.value);
+          });
+
+          params.append("page", currentPage.toString());
+          params.append("limit", perPage.toString());
+
+          const response = await axios.get(
+            `${backendUrl}/interaction?${params.toString()}`,
+            {
+              headers: { Authorization: auth },
+            }
+          );
+
+          setData(response.data.data);
+          setTotalPages(Math.ceil(response.data.meta.total / perPage));
+        } catch (error) {
+          console.error("Error fetching data:", error);
         }
-      );
-
-      setData(response.data.data);
-      const total = response.data.meta.total;
-      setTotalPages(Math.ceil(total / itemsPerPage));
-    } catch (error) {
-      console.error("Error fetching data:", error);
-    }
-  };
+      };
+      fetchDataAsync();
+    }, 300),
+    [sorting, columnFilters, currentPage, perPage, auth, backendUrl]
+  );
 
   useEffect(() => {
     fetchData();
-  }, [currentPage, perPage, filters, sorting]);
+  }, [sorting, columnFilters, currentPage, perPage]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setCurrentInteraction((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    
+    // Special handling for date input
+    if (name === 'date') {
+      // Create date object in local timezone
+      const localDate = new Date(value);
+      // Convert to UTC keeping the same calendar date
+      const utcDate = new Date(Date.UTC(
+        localDate.getFullYear(),
+        localDate.getMonth(),
+        localDate.getDate(),
+        12, // Set to noon UTC to avoid timezone issues
+        0,
+        0,
+        0
+      ));
+      
+      setCurrentInteraction(prev => ({
+        ...prev,
+        [name]: utcDate.toISOString().split('T')[0]
+      }));
+    } else {
+      setCurrentInteraction(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
   };
 
   const handleEdit = (interaction) => {
@@ -255,138 +382,185 @@ const InteractionTable = () => {
   const columns = [
     columnHelper.accessor("id", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          ID
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            ID
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
-      cell: (info) => (
-        <div className="w-[70px] break-words">{info.getValue()}</div>
-      ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("account", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Account
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Account
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
-      cell: (info) => <div className="w-[80px]">{info.getValue() || ""}</div>,
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("name", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Name
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Name
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
-      cell: (info) => <div className="w-[260px]">{info.getValue()}</div>,
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("type", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Type
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Type
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={types.filter(t => t !== 'Any')} 
+            />
+          </div>
         </div>
       ),
-      cell: (info) => <div className="w-[110px]">{info.getValue()}</div>,
+      filterFn: 'equals'
     }),
     columnHelper.accessor("method", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Method
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Method
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={methods.filter(m => m !== 'Any')} 
+            />
+          </div>
         </div>
       ),
-      cell: (info) => (
-        <div className="w-[120px] break-words">{info.getValue()}</div>
-      ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("date", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Date
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Date
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <DateFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
         <div className="w-[140px] break-words">
-          {new Date(info.getValue()).toLocaleDateString()}
+          {formatDisplayDate(info.getValue())}
         </div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("duration", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Duration
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Duration
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <SelectFilter 
+              column={column} 
+              options={durations.filter(d => d !== 'Any')} 
+            />
+          </div>
         </div>
       ),
       cell: (info) => (
         <div className="w-[120px] break-words">{info.getValue()}</div>
       ),
+      filterFn: 'equals'
     }),
     columnHelper.accessor("notes", {
       header: ({ column }) => (
-        <div
-          className="cursor-pointer select-none flex items-center gap-1"
-          onClick={() => column.toggleSorting()}
-        >
-          Notes
-          {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
-          {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
-          {!column.getIsSorted() && (
-            <Icon icon="ri:sort-line" className="opacity-30" />
-          )}
+        <div>
+          <div
+            className="cursor-pointer select-none flex items-center gap-1"
+            onClick={() => column.toggleSorting()}
+          >
+            Notes
+            {column.getIsSorted() === "asc" && <Icon icon="ri:sort-asc" />}
+            {column.getIsSorted() === "desc" && <Icon icon="ri:sort-desc" />}
+            {!column.getIsSorted() && (
+              <Icon icon="ri:sort-line" className="opacity-30" />
+            )}
+          </div>
+          <div className="mt-2">
+            <TextFilter column={column} />
+          </div>
         </div>
       ),
       cell: (info) => (
@@ -396,6 +570,7 @@ const InteractionTable = () => {
             : info.getValue()}
         </div>
       ),
+      filterFn: 'includesString'
     }),
     columnHelper.accessor("actions", {
       header: () => <div className="w-[120px] text-center">Actions</div>,
@@ -438,10 +613,14 @@ const InteractionTable = () => {
     columns,
     state: {
       sorting,
+      columnFilters,
     },
     onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
     manualSorting: true,
+    manualFiltering: true,
   });
   const PaginationControls = () => (
     <div className="flex items-center justify-between px-4 py-3 bg-white border-t border-gray-200 sm:px-6">
@@ -486,8 +665,23 @@ const InteractionTable = () => {
 
   const getCurrentDate = () => {
     const today = new Date();
-    // Format date as YYYY-MM-DD
-    return today.toISOString().split('T')[0];
+    // Convert to UTC date string
+    const utcDate = new Date(Date.UTC(
+      today.getFullYear(),
+      today.getMonth(),
+      today.getDate(),
+      12,
+      0,
+      0,
+      0
+    ));
+    return utcDate.toISOString().split('T')[0];
+  };
+
+  const formatDisplayDate = (dateString) => {
+    const date = new Date(dateString);
+    // Format date in local timezone
+    return date.toLocaleDateString();
   };
 
   return (
@@ -520,176 +714,6 @@ const InteractionTable = () => {
             Add Participants Interaction
           </button>
         </div>
-      </div>
-
-      <div className="flex gap-2 mb-4">
-        <div className="w-[100px]">
-          <input
-            type="number"
-            placeholder="ID"
-            value={filters.id}
-            onChange={(e) => handleFilterChange("id", e.target.value)}
-            className="px-3 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="w-[110px]">
-          <input
-            type="text"
-            placeholder="Account"
-            value={filters.account}
-            onChange={(e) => {
-              const value = e.target.value;
-              if (value === "" || /^\d+$/.test(value)) {
-                handleFilterChange("account", value);
-              }
-            }}
-            className="px-3 py-2 w-full border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="w-[280px]">
-          <input
-            type="text"
-            placeholder="Name"
-            value={filters.name}
-            onChange={(e) => handleFilterChange("name", e.target.value)}
-            className="px-3 w-full py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="relative w-[140px]" ref={typeRef}>
-          <div
-            onClick={() => setIsTypeOpen(!isTypeOpen)}
-            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
-              isTypeOpen ? "bg-gray-50" : ""
-            }`}
-          >
-            {filters.type || "Type"}
-            <span className="ml-2">▼</span>
-          </div>
-          {isTypeOpen && (
-            <div
-              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
-              style={{ zIndex: 99 }}
-            >
-              {types.map((type) => (
-                <div
-                  key={type}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => {
-                    handleFilterChange("type", type === "Any" ? "" : type);
-                    setIsTypeOpen(false);
-                  }}
-                >
-                  {type}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="relative w-[140px]" ref={methodRef}>
-          <div
-            onClick={() => setIsMethodOpen(!isMethodOpen)}
-            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
-              isMethodOpen ? "bg-gray-50" : ""
-            }`}
-          >
-            {filters.method || "Method"}
-            <span className="ml-2">▼</span>
-          </div>
-          {isMethodOpen && (
-            <div
-              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
-              style={{ zIndex: 99 }}
-            >
-              {methods.map((method) => (
-                <div
-                  key={method}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => {
-                    handleFilterChange(
-                      "method",
-                      method === "Any" ? "" : method
-                    );
-                    setIsMethodOpen(false);
-                  }}
-                >
-                  {method}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <div className="relative w-[160px]">
-          <div className="flex items-center">
-            <input
-              type="date"
-              value={filters.date}
-              onChange={(e) => {
-                const date = e.target.value ? new Date(e.target.value) : "";
-                const formattedDate = date ? date.toISOString() : "";
-                handleFilterChange("date", formattedDate);
-              }}
-              className="px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 w-full"
-            />
-            {filters.date && (
-              <button
-                onClick={() => handleFilterChange("date", "")}
-                className="absolute right-10 text-3xl hover:text-gray-700 text-gray-400"
-                type="button"
-                aria-label="Clear date"
-              >
-                ×
-              </button>
-            )}
-            <Calendar
-              className="absolute right-3 pointer-events-none text-gray-400"
-              size={20}
-            />
-          </div>
-        </div>
-
-        <div className="relative w-[140px]" ref={durationRef}>
-          <div
-            onClick={() => setIsDurationOpen(!isDurationOpen)}
-            className={`px-3 py-2 border rounded-md cursor-pointer flex items-center justify-between ${
-              isDurationOpen ? "bg-gray-50" : ""
-            }`}
-          >
-            {filters.duration || "Duration"}
-            <span className="ml-2">▼</span>
-          </div>
-          {isDurationOpen && (
-            <div
-              className="absolute mt-1 w-full bg-white border rounded-md shadow-lg"
-              style={{ zIndex: 99 }}
-            >
-              {durations.map((duration) => (
-                <div
-                  key={duration}
-                  className="px-3 py-2 hover:bg-gray-100 cursor-pointer"
-                  onClick={() => {
-                    handleFilterChange(
-                      "duration",
-                      duration === "Any" ? "" : duration
-                    );
-                    setIsDurationOpen(false);
-                  }}
-                >
-                  {duration}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        <input
-          type="text"
-          placeholder="Notes"
-          value={filters.notes}
-          onChange={(e) => handleFilterChange("notes", e.target.value)}
-          className="px-3 w-[260px] py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-        />
       </div>
 
       <div className="flex-1 flex flex-col bg-white shadow-lg rounded-lg min-h-0">
