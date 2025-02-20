@@ -15,7 +15,7 @@ import DownloadButtons from "./DoanloadButton";
 import { Icon } from "@iconify/react";
 import { debounce } from "lodash";
 
-const TextFilter = React.memo(({ column }) => {
+const TextFilter = React.memo(({ column, type }) => {
   const [value, setValue] = useState(column.getFilterValue() ?? '');
 
   const onChangeDebounced = useCallback(
@@ -26,9 +26,14 @@ const TextFilter = React.memo(({ column }) => {
   );
 
   const onChange = useCallback((e) => {
-    setValue(e.target.value);
-    onChangeDebounced(e.target.value);
-  }, [onChangeDebounced]);
+    let newValue = e.target.value;
+    // If type is 'number', only allow numeric input
+    if (type === 'number') {
+      newValue = newValue.replace(/[^0-9]/g, '');
+    }
+    setValue(newValue);
+    onChangeDebounced(newValue);
+  }, [onChangeDebounced, type]);
 
   return (
     <input
@@ -97,7 +102,7 @@ const DateFilter = React.memo(({ column }) => {
       {value && (
         <button
           onClick={handleClear}
-          className="absolute right-0 top-[-4] -translate-y-1/2 text-gray-400 hover:text-gray-600 text-xl"
+          className="absolute right-0 top-[-11] -translate-y-1/2 text-gray-400 hover:text-gray-600 text-2xl"
           type="button"
         >
           ×
@@ -395,7 +400,7 @@ const InteractionTable = () => {
             )}
           </div>
           <div className="mt-2">
-            <TextFilter column={column} />
+            <TextFilter column={column} type="number" />
           </div>
         </div>
       ),
@@ -416,7 +421,7 @@ const InteractionTable = () => {
             )}
           </div>
           <div className="mt-2">
-            <TextFilter column={column} />
+            <TextFilter column={column} type="number" />
           </div>
         </div>
       ),
@@ -437,7 +442,7 @@ const InteractionTable = () => {
             )}
           </div>
           <div className="mt-2">
-            <TextFilter column={column} />
+            <TextFilter column={column} type="number" />
           </div>
         </div>
       ),
@@ -559,7 +564,7 @@ const InteractionTable = () => {
             )}
           </div>
           <div className="mt-2">
-            <TextFilter column={column} />
+            <TextFilter column={column} type="number" />
           </div>
         </div>
       ),

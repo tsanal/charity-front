@@ -72,7 +72,7 @@ const DebouncedInput = React.memo(({
   );
 });
 
-const TextFilter = React.memo(({ column }) => {
+const TextFilter = React.memo(({ column, type }) => {
   const [value, setValue] = useState(column.getFilterValue() ?? '');
 
   const onChangeDebounced = useCallback(
@@ -83,9 +83,14 @@ const TextFilter = React.memo(({ column }) => {
   );
 
   const onChange = useCallback((e) => {
-    setValue(e.target.value);
-    onChangeDebounced(e.target.value);
-  }, [onChangeDebounced]);
+    let newValue = e.target.value;
+    // If type is 'number', only allow numeric input
+    if (type === 'number') {
+      newValue = newValue.replace(/[^0-9]/g, '');
+    }
+    setValue(newValue);
+    onChangeDebounced(newValue);
+  }, [onChangeDebounced, type]);
 
   return (
     <input
@@ -264,7 +269,10 @@ const ContactTable = () => {
             )}
           </div>
           <div className="mt-2">
-            <TextFilter column={column} />
+            <TextFilter 
+              column={column} 
+              type="number"
+            />
           </div>
         </div>
       ),
